@@ -176,10 +176,18 @@ const ShiftCard: React.FC<{
 // --- APP ---
 
 const App: React.FC = () => {
+  type PeriodFilter = 'Q1' | 'Q2' | 'MONTH';
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentQuincena: PeriodFilter = now.getDate() <= 15 ? 'Q1' : 'Q2';
+  const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+
   const [currentView, setCurrentView] = useState<'resumen' | 'historial' | 'perfil'>('resumen');
   const [entryMode, setEntryMode] = useState<'smart' | 'manual'>('smart');
   const [selectedGroup, setSelectedGroup] = useState<Group>('II');
   const [irpf, setIrpf] = useState<number>(15);
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(currentQuincena);
   const [history, setHistory] = useState<ShiftEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -333,12 +341,59 @@ const App: React.FC = () => {
     }
   };
 
-  const totals = useMemo(() => {
-    return history.reduce((acc, curr) => ({
-      bruto: acc.bruto + (curr.total || 0),
-      neto: acc.neto + ((curr.total || 0) * (1 - irpf / 100))
-    }), { bruto: 0, neto: 0 });
-  }, [history, irpf]);
+  const monthOptions = useMemo(() => {
+    const keys = new Set<string>([currentMonthKey]);
+    history.forEach((entry) => {
+      const date = String(entry.date || '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) keys.add(date.slice(0, 7));
+    });
+    return Array.from(keys).sort((a, b) => b.localeCompare(a));
+  }, [history, currentMonthKey]);
+
+  const formatMonthLabel = (monthKey: string) => {
+    const [year, month] = monthKey.split('-');
+    const monthIdx = Number(month) - 1;
+    return `${monthNames[monthIdx] || month} ${year}`;
+  };
+
+  const calculateTotals = (entries: ShiftEntry[]) => {
+    return entries.reduce((acc, curr) => {
+      const bruto = Number(curr.total || 0);
+      return {
+        bruto: acc.bruto + bruto,
+        neto: acc.neto + (bruto * (1 - irpf / 100))
+      };
+    }, { bruto: 0, neto: 0 });
+  };
+
+  const monthEntries = useMemo(() => {
+    return history.filter((entry) => String(entry.date || '').startsWith(`${selectedMonth}-`));
+  }, [history, selectedMonth]);
+
+  const firstHalfEntries = useMemo(() => {
+    return monthEntries.filter((entry) => Number(String(entry.date).slice(8, 10)) <= 15);
+  }, [monthEntries]);
+
+  const secondHalfEntries = useMemo(() => {
+    return monthEntries.filter((entry) => Number(String(entry.date).slice(8, 10)) >= 16);
+  }, [monthEntries]);
+
+  const periodEntries = useMemo(() => {
+    if (selectedPeriod === 'MONTH') return monthEntries;
+    if (selectedPeriod === 'Q1') return firstHalfEntries;
+    return secondHalfEntries;
+  }, [selectedPeriod, monthEntries, firstHalfEntries, secondHalfEntries]);
+
+  const selectedTotals = useMemo(() => calculateTotals(periodEntries), [periodEntries, irpf]);
+  const monthTotals = useMemo(() => calculateTotals(monthEntries), [monthEntries, irpf]);
+  const firstHalfTotals = useMemo(() => calculateTotals(firstHalfEntries), [firstHalfEntries, irpf]);
+  const secondHalfTotals = useMemo(() => calculateTotals(secondHalfEntries), [secondHalfEntries, irpf]);
+
+  const selectedPeriodLabel = selectedPeriod === 'MONTH'
+    ? 'MES COMPLETO'
+    : selectedPeriod === 'Q1'
+      ? '1A QUINCENA'
+      : '2A QUINCENA';
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-navy-950 flex flex-col relative transition-colors font-sans overflow-x-hidden">
@@ -365,19 +420,68 @@ const App: React.FC = () => {
         {currentView === 'resumen' && (
           <div className="space-y-6">
             <section className="bg-navy-950 dark:bg-navy-900 rounded-[2rem] p-7 shadow-2xl border border-navy-800">
-               <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">Balance Neto Mensual</p>
+               <div className="flex items-center justify-between gap-3 mb-4">
+                 <label className="text-[9px] font-bold text-navy-400 uppercase tracking-widest opacity-70">Periodo resumen</label>
+                 <select
+                   value={selectedMonth}
+                   onChange={(e) => setSelectedMonth(e.target.value)}
+                   className="bg-navy-800 text-white text-[10px] font-black rounded-lg px-3 py-2 border border-navy-700"
+                 >
+                   {monthOptions.map((monthKey) => (
+                     <option key={monthKey} value={monthKey}>{formatMonthLabel(monthKey)}</option>
+                   ))}
+                 </select>
+               </div>
+
+               <div className="grid grid-cols-3 gap-2 mb-4">
+                 <button
+                   onClick={() => setSelectedPeriod('Q1')}
+                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
+                 >
+                   1A Q
+                 </button>
+                 <button
+                   onClick={() => setSelectedPeriod('Q2')}
+                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
+                 >
+                   2A Q
+                 </button>
+                 <button
+                   onClick={() => setSelectedPeriod('MONTH')}
+                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'MONTH' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
+                 >
+                   MES
+                 </button>
+               </div>
+
+               <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">{`Balance Neto ${selectedPeriodLabel} - ${formatMonthLabel(selectedMonth)}`}</p>
                <div className="flex items-baseline gap-1">
-                 <h2 className="text-4xl font-black text-white tracking-tighter">{totals.neto.toFixed(2)}</h2>
+                 <h2 className="text-4xl font-black text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
                  <span className="text-xl font-bold text-safety">EUR</span>
                </div>
                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Bruto Total</p>
-                   <p className="text-base font-bold text-white">{totals.bruto.toFixed(2)} EUR</p>
+                   <p className="text-base font-bold text-white">{selectedTotals.bruto.toFixed(2)} EUR</p>
                  </div>
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Retencion IRPF</p>
-                   <p className="text-base font-bold text-red-400">{(totals.bruto - totals.neto).toFixed(2)} EUR</p>
+                   <p className="text-base font-bold text-red-400">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} EUR</p>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/5">
+                 <div className="bg-navy-800 rounded-xl p-2">
+                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">Mes</p>
+                   <p className="text-[11px] font-black text-white">{monthTotals.neto.toFixed(2)} EUR</p>
+                 </div>
+                 <div className="bg-navy-800 rounded-xl p-2">
+                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">1A Quincena</p>
+                   <p className="text-[11px] font-black text-white">{firstHalfTotals.neto.toFixed(2)} EUR</p>
+                 </div>
+                 <div className="bg-navy-800 rounded-xl p-2">
+                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">2A Quincena</p>
+                   <p className="text-[11px] font-black text-white">{secondHalfTotals.neto.toFixed(2)} EUR</p>
                  </div>
                </div>
             </section>
