@@ -1,0 +1,6 @@
+
+{
+  "name": "MiSueldoCPE",
+  "description": "Calculadora oficial de jornales para el puerto de Valencia (CPE) basado en las tablas 2025. Entrada inteligente de texto y sincronización en la nube.",
+  "requestFramePermissions": []
+}
