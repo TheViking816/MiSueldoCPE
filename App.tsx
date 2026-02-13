@@ -346,12 +346,12 @@ const App: React.FC = () => {
       {editingEntry && <EditModal entry={editingEntry} onClose={() => setEditingEntry(null)} onSave={handleUpdate} />}
 
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-navy-950/80 ios-blur border-b dark:border-navy-900 px-5 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-safety/20 bg-white">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-safety/20 bg-white p-1">
             <img src={appLogo} alt="MiSueldoCPE" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-navy-950 dark:text-white leading-none">MiSueldoCPE</h1>
+            <h1 className="text-base font-bold text-navy-950 dark:text-white leading-none">MiSueldoCPE</h1>
             <p className="text-[9px] font-black text-safety uppercase tracking-widest mt-0.5">Valencia 2025</p>
           </div>
         </div>
