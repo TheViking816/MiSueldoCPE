@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Group, ShiftEntry, DayType, ShiftType } from './types';
 import { PROFESSIONAL_GROUPS, SALARY_TABLE_2025 } from './constants';
@@ -12,7 +12,7 @@ import {
   deleteDoc, doc, setDoc, getDoc, getDocs, writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- CONFIGURACIÓN PARA EL PROYECTO: mi-sueldo-cpe ---
+// --- CONFIGURACIÃ“N PARA EL PROYECTO: mi-sueldo-cpe ---
 const firebaseConfig = {
   apiKey: "AIzaSyCHNvmk2M4Okno25TVS3b2AlmUOaDr5ubs",
   authDomain: "mi-sueldo-cpe.firebaseapp.com",
@@ -77,7 +77,7 @@ const EditModal: React.FC<{
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Producción (€)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">ProducciÃ³n (â‚¬)</label>
               <input type="number" step="0.01" value={prod} onChange={e => setProd(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
             </div>
           </div>
@@ -116,13 +116,13 @@ const ShiftCard: React.FC<{
           <div className="overflow-hidden">
             <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase mb-0.5">{entry.label}</h4>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-              G.{entry.group} • {entry.dayType} {entry.company ? `• ${entry.company}` : ''}
+              G.{entry.group} â€¢ {entry.dayType} {entry.company ? `â€¢ ${entry.company}` : ''}
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{(entry.total || 0).toFixed(2)}€</p>
-          <p className="text-emerald-500 font-black text-[11px] mt-1">{(entry.net || 0).toFixed(2)}€ NETO</p>
+          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{(entry.total || 0).toFixed(2)}â‚¬</p>
+          <p className="text-emerald-500 font-black text-[11px] mt-1">{(entry.net || 0).toFixed(2)}â‚¬ NETO</p>
         </div>
       </div>
       
@@ -131,11 +131,11 @@ const ShiftCard: React.FC<{
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Base</p>
-              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)}€</p>
+              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)}â‚¬</p>
             </div>
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
-              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Producción</p>
-              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)}€</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">ProducciÃ³n</p>
+              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)}â‚¬</p>
             </div>
           </div>
           {entry.ship && (
@@ -183,6 +183,38 @@ const App: React.FC = () => {
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ShiftEntry | null>(null);
   const [inputText, setInputText] = useState('');
+
+  const recalculateHistoryIrpf = async (nextIrpf: number): Promise<number> => {
+    const snapshot = await getDocs(historyCollection);
+    if (snapshot.empty) return 0;
+
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    let updatedCount = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + chunkSize);
+
+      chunk.forEach((docSnap) => {
+        const data = docSnap.data() as Partial<ShiftEntry>;
+        const total = Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0)));
+        const net = Number((total * (1 - (nextIrpf / 100))).toFixed(2));
+
+        batch.set(doc(db, "jornales_valencia", docSnap.id), {
+          irpf: nextIrpf,
+          net,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        updatedCount += 1;
+      });
+
+      await batch.commit();
+    }
+
+    return updatedCount;
+  };
   
   // Cargar Ajustes y Jornales
   useEffect(() => {
@@ -202,21 +234,21 @@ const App: React.FC = () => {
     });
 
     // 3. Sincronizar Historial
-    console.log("🔥 Sincronizando con MiSueldoCPE...");
+    console.log("ðŸ”¥ Sincronizando con MiSueldoCPE...");
     const q = query(historyCollection, orderBy("date", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const entries = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ShiftEntry));
       setHistory(entries);
       setIsLoading(false);
     }, (err) => {
-      console.error("❌ Error Firestore:", err.message);
+      console.error("âŒ Error Firestore:", err.message);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Función para guardar ajustes en la nube
+  // Funcion para guardar ajustes en la nube
   const handleSaveSettings = async () => {
     setIsSettingsSaving(true);
     try {
@@ -228,10 +260,15 @@ const App: React.FC = () => {
       
       localStorage.setItem('estiba_irpf', String(irpf));
       localStorage.setItem('estiba_group', selectedGroup);
-      
-      alert("¡Preferencias guardadas en la nube!");
+
+      const updated = await recalculateHistoryIrpf(irpf);
+      if (updated > 0) {
+        alert(`Preferencias guardadas. Se recalcularon ${updated} jornales al ${irpf}% de IRPF.`);
+      } else {
+        alert('Preferencias guardadas en la nube.');
+      }
     } catch (e: any) {
-      alert("Error al guardar ajustes: " + e.message);
+      alert('Error al guardar ajustes: ' + e.message);
     } finally {
       setIsSettingsSaving(false);
     }
@@ -243,7 +280,7 @@ const App: React.FC = () => {
     try {
       const partials = parseBulkText(inputText, selectedGroup);
       if (partials.length === 0) {
-        alert("No se han detectado jornales válidos.");
+        alert("No se han detectado jornales vÃ¡lidos.");
         setIsSaving(false);
         return;
       }
@@ -253,7 +290,7 @@ const App: React.FC = () => {
         return Promise.resolve(null);
       });
       await Promise.all(saves);
-      alert(`¡Se han guardado ${partials.length} jornales!`);
+      alert(`Â¡Se han guardado ${partials.length} jornales!`);
       setInputText('');
       setCurrentView('historial');
     } catch (e: any) {
@@ -264,7 +301,7 @@ const App: React.FC = () => {
   };
 
   const handleDelete = async (docId: string) => {
-    if (!docId || !confirm("¿Borrar este jornal de la nube?")) return;
+    if (!docId || !confirm("Â¿Borrar este jornal de la nube?")) return;
     try {
       await deleteDoc(doc(db, "jornales_valencia", docId));
     } catch (e: any) {
@@ -318,16 +355,16 @@ const App: React.FC = () => {
                <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">Balance Neto Mensual</p>
                <div className="flex items-baseline gap-1">
                  <h2 className="text-4xl font-black text-white tracking-tighter">{totals.neto.toFixed(2)}</h2>
-                 <span className="text-xl font-bold text-safety">€</span>
+                 <span className="text-xl font-bold text-safety">â‚¬</span>
                </div>
                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Bruto Total</p>
-                   <p className="text-base font-bold text-white">{totals.bruto.toFixed(2)}€</p>
+                   <p className="text-base font-bold text-white">{totals.bruto.toFixed(2)}â‚¬</p>
                  </div>
                  <div>
-                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Retención IRPF</p>
-                   <p className="text-base font-bold text-red-400">{(totals.bruto - totals.neto).toFixed(2)}€</p>
+                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">RetenciÃ³n IRPF</p>
+                   <p className="text-base font-bold text-red-400">{(totals.bruto - totals.neto).toFixed(2)}â‚¬</p>
                  </div>
                </div>
             </section>
@@ -344,16 +381,16 @@ const App: React.FC = () => {
                     value={inputText} 
                     onChange={e => setInputText(e.target.value)} 
                     className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-2xl p-4 text-xs h-40 resize-none placeholder:text-slate-400 focus:ring-1 ring-safety/30 font-mono" 
-                    placeholder="Pega aquí una o varias líneas del portal..." 
+                    placeholder="Pega aquÃ­ una o varias lÃ­neas del portal..." 
                   />
                   <p className="text-[9px] text-slate-400 px-2 leading-relaxed">
-                    Extrae automáticamente: Fecha, Turno, Especialidad, Empresa y Buque. 
+                    Extrae automÃ¡ticamente: Fecha, Turno, Especialidad, Empresa y Buque. 
                     Se calcula con tu IRPF actual ({irpf}%).
                   </p>
                 </div>
               ) : (
                 <div className="py-8 text-center text-slate-400 text-xs px-4">
-                  El modo manual está optimizado para la próxima actualización. Por ahora, usa la <strong>Carga Inteligente</strong> pegando el texto de tus jornales.
+                  El modo manual estÃ¡ optimizado para la prÃ³xima actualizaciÃ³n. Por ahora, usa la <strong>Carga Inteligente</strong> pegando el texto de tus jornales.
                 </div>
               )}
               
@@ -386,7 +423,7 @@ const App: React.FC = () => {
 
         {currentView === 'perfil' && (
           <div className="space-y-6">
-            <ViewTitle title="Ajustes" subtitle="Configuración de Cuenta" />
+            <ViewTitle title="Ajustes" subtitle="ConfiguraciÃ³n de Cuenta" />
             <div className="bg-white dark:bg-navy-900 rounded-3xl p-6 border dark:border-navy-800 space-y-8 shadow-sm">
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tu Grupo Profesional</label>
@@ -427,7 +464,7 @@ const App: React.FC = () => {
                   <span className="material-symbols-outlined">{isSettingsSaving ? 'sync' : 'cloud_upload'}</span>
                   {isSettingsSaving ? 'SINCRONIZANDO...' : 'GUARDAR PREFERENCIAS'}
                 </button>
-                <p className="text-[9px] text-slate-400 text-center mt-3 uppercase font-bold tracking-widest">Al guardar, tus nuevos jornales usarán estos valores por defecto.</p>
+                <p className="text-[9px] text-slate-400 text-center mt-3 uppercase font-bold tracking-widest">Al guardar, tus nuevos jornales usarÃ¡n estos valores por defecto.</p>
               </div>
             </div>
           </div>
