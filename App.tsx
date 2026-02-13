@@ -1,5 +1,5 @@
-﻿
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Group, ShiftEntry, DayType, ShiftType } from './types';
 import { PROFESSIONAL_GROUPS, SALARY_TABLE_2025 } from './constants';
 import { parseBulkText, calculateShiftTotal } from './utils/parser';
@@ -12,7 +12,7 @@ import {
   deleteDoc, doc, setDoc, getDoc, getDocs, writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- CONFIGURACIÃ“N PARA EL PROYECTO: mi-sueldo-cpe ---
+// --- CONFIGURACIN PARA EL PROYECTO: mi-sueldo-cpe ---
 const firebaseConfig = {
   apiKey: "AIzaSyCHNvmk2M4Okno25TVS3b2AlmUOaDr5ubs",
   authDomain: "mi-sueldo-cpe.firebaseapp.com",
@@ -77,7 +77,7 @@ const EditModal: React.FC<{
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">ProducciÃ³n (â‚¬)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Produccion (EUR)</label>
               <input type="number" step="0.01" value={prod} onChange={e => setProd(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
             </div>
           </div>
@@ -95,12 +95,15 @@ const EditModal: React.FC<{
 
 const ShiftCard: React.FC<{ 
   entry: ShiftEntry, 
+  currentIrpf: number,
   onDelete: (id: string) => void,
   onEdit: (entry: ShiftEntry) => void 
-}> = ({ entry, onDelete, onEdit }) => {
+}> = ({ entry, currentIrpf, onDelete, onEdit }) => {
   const [showDetails, setShowDetails] = useState(false);
   const dateObj = new Date(entry.date);
   const monthNames = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  const grossTotal = Number(entry.total || 0);
+  const netWithCurrentIrpf = Number((grossTotal * (1 - currentIrpf / 100)).toFixed(2));
   
   return (
     <div 
@@ -116,13 +119,13 @@ const ShiftCard: React.FC<{
           <div className="overflow-hidden">
             <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase mb-0.5">{entry.label}</h4>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-              G.{entry.group} â€¢ {entry.dayType} {entry.company ? `â€¢ ${entry.company}` : ''}
+              G.{entry.group} - {entry.dayType} {entry.company ? `- ${entry.company}` : ''}
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{(entry.total || 0).toFixed(2)}â‚¬</p>
-          <p className="text-emerald-500 font-black text-[11px] mt-1">{(entry.net || 0).toFixed(2)}â‚¬ NETO</p>
+          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{grossTotal.toFixed(2)} EUR</p>
+          <p className="text-emerald-500 font-black text-[11px] mt-1">{netWithCurrentIrpf.toFixed(2)} EUR NETO</p>
         </div>
       </div>
       
@@ -131,11 +134,11 @@ const ShiftCard: React.FC<{
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Base</p>
-              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)}â‚¬</p>
+              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)} EUR</p>
             </div>
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
-              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">ProducciÃ³n</p>
-              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)}â‚¬</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Produccion</p>
+              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)} EUR</p>
             </div>
           </div>
           {entry.ship && (
@@ -145,7 +148,7 @@ const ShiftCard: React.FC<{
             </div>
           )}
           <div className="flex justify-between items-center px-1 pt-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase">IRPF {entry.irpf}%</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase">IRPF {currentIrpf}%</span>
             <div className="flex items-center gap-4">
                <button 
                 onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
@@ -228,20 +231,30 @@ const App: React.FC = () => {
     getDoc(settingsDocRef).then((docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (typeof data.irpf === 'number') setIrpf(data.irpf);
+        const savedIrpf = Number(data.irpf);
+        if (!Number.isNaN(savedIrpf)) setIrpf(savedIrpf);
         if (typeof data.group === 'string') setSelectedGroup(data.group as Group);
       }
     });
 
     // 3. Sincronizar Historial
-    console.log("ðŸ”¥ Sincronizando con MiSueldoCPE...");
+    console.log("Sincronizando con MiSueldoCPE...");
     const q = query(historyCollection, orderBy("date", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const entries = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ShiftEntry));
+      const entries = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Partial<ShiftEntry>;
+        return {
+          ...data,
+          id: docSnap.id,
+          total: Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0))),
+          net: Number(data.net ?? 0),
+          irpf: Number(data.irpf ?? 0)
+        } as ShiftEntry;
+      });
       setHistory(entries);
       setIsLoading(false);
     }, (err) => {
-      console.error("âŒ Error Firestore:", err.message);
+      console.error("Error Firestore:", err.message);
       setIsLoading(false);
     });
 
@@ -280,7 +293,7 @@ const App: React.FC = () => {
     try {
       const partials = parseBulkText(inputText, selectedGroup);
       if (partials.length === 0) {
-        alert("No se han detectado jornales vÃ¡lidos.");
+        alert("No se han detectado jornales validos.");
         setIsSaving(false);
         return;
       }
@@ -290,7 +303,7 @@ const App: React.FC = () => {
         return Promise.resolve(null);
       });
       await Promise.all(saves);
-      alert(`Â¡Se han guardado ${partials.length} jornales!`);
+      alert(`Se han guardado ${partials.length} jornales!`);
       setInputText('');
       setCurrentView('historial');
     } catch (e: any) {
@@ -301,7 +314,7 @@ const App: React.FC = () => {
   };
 
   const handleDelete = async (docId: string) => {
-    if (!docId || !confirm("Â¿Borrar este jornal de la nube?")) return;
+    if (!docId || !confirm("Borrar este jornal de la nube?")) return;
     try {
       await deleteDoc(doc(db, "jornales_valencia", docId));
     } catch (e: any) {
@@ -323,9 +336,9 @@ const App: React.FC = () => {
   const totals = useMemo(() => {
     return history.reduce((acc, curr) => ({
       bruto: acc.bruto + (curr.total || 0),
-      neto: acc.neto + (curr.net || 0)
+      neto: acc.neto + ((curr.total || 0) * (1 - irpf / 100))
     }), { bruto: 0, neto: 0 });
-  }, [history]);
+  }, [history, irpf]);
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-navy-950 flex flex-col relative transition-colors font-sans overflow-x-hidden">
@@ -355,16 +368,16 @@ const App: React.FC = () => {
                <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">Balance Neto Mensual</p>
                <div className="flex items-baseline gap-1">
                  <h2 className="text-4xl font-black text-white tracking-tighter">{totals.neto.toFixed(2)}</h2>
-                 <span className="text-xl font-bold text-safety">â‚¬</span>
+                 <span className="text-xl font-bold text-safety">EUR</span>
                </div>
                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Bruto Total</p>
-                   <p className="text-base font-bold text-white">{totals.bruto.toFixed(2)}â‚¬</p>
+                   <p className="text-base font-bold text-white">{totals.bruto.toFixed(2)} EUR</p>
                  </div>
                  <div>
-                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">RetenciÃ³n IRPF</p>
-                   <p className="text-base font-bold text-red-400">{(totals.bruto - totals.neto).toFixed(2)}â‚¬</p>
+                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Retencion IRPF</p>
+                   <p className="text-base font-bold text-red-400">{(totals.bruto - totals.neto).toFixed(2)} EUR</p>
                  </div>
                </div>
             </section>
@@ -381,16 +394,16 @@ const App: React.FC = () => {
                     value={inputText} 
                     onChange={e => setInputText(e.target.value)} 
                     className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-2xl p-4 text-xs h-40 resize-none placeholder:text-slate-400 focus:ring-1 ring-safety/30 font-mono" 
-                    placeholder="Pega aquÃ­ una o varias lÃ­neas del portal..." 
+                    placeholder="Pega aqui una o varias lineas del portal..." 
                   />
                   <p className="text-[9px] text-slate-400 px-2 leading-relaxed">
-                    Extrae automÃ¡ticamente: Fecha, Turno, Especialidad, Empresa y Buque. 
+                    Extrae automaticamente: Fecha, Turno, Especialidad, Empresa y Buque. 
                     Se calcula con tu IRPF actual ({irpf}%).
                   </p>
                 </div>
               ) : (
                 <div className="py-8 text-center text-slate-400 text-xs px-4">
-                  El modo manual estÃ¡ optimizado para la prÃ³xima actualizaciÃ³n. Por ahora, usa la <strong>Carga Inteligente</strong> pegando el texto de tus jornales.
+                  El modo manual esta optimizado para la proxima actualizacion. Por ahora, usa la <strong>Carga Inteligente</strong> pegando el texto de tus jornales.
                 </div>
               )}
               
@@ -410,7 +423,7 @@ const App: React.FC = () => {
           <div className="space-y-4">
             <ViewTitle title="Mis Registros" subtitle={`${history.length} jornales en la nube`} />
             <div className="space-y-3">
-              {history.map(entry => <ShiftCard key={entry.id} entry={entry} onDelete={handleDelete} onEdit={setEditingEntry} />)}
+              {history.map(entry => <ShiftCard key={entry.id} entry={entry} currentIrpf={irpf} onDelete={handleDelete} onEdit={setEditingEntry} />)}
               {history.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 opacity-40">
                   <span className="material-symbols-outlined text-4xl mb-2">cloud_off</span>
@@ -423,7 +436,7 @@ const App: React.FC = () => {
 
         {currentView === 'perfil' && (
           <div className="space-y-6">
-            <ViewTitle title="Ajustes" subtitle="ConfiguraciÃ³n de Cuenta" />
+            <ViewTitle title="Ajustes" subtitle="Configuracion de Cuenta" />
             <div className="bg-white dark:bg-navy-900 rounded-3xl p-6 border dark:border-navy-800 space-y-8 shadow-sm">
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tu Grupo Profesional</label>
@@ -464,7 +477,7 @@ const App: React.FC = () => {
                   <span className="material-symbols-outlined">{isSettingsSaving ? 'sync' : 'cloud_upload'}</span>
                   {isSettingsSaving ? 'SINCRONIZANDO...' : 'GUARDAR PREFERENCIAS'}
                 </button>
-                <p className="text-[9px] text-slate-400 text-center mt-3 uppercase font-bold tracking-widest">Al guardar, tus nuevos jornales usarÃ¡n estos valores por defecto.</p>
+                <p className="text-[9px] text-slate-400 text-center mt-3 uppercase font-bold tracking-widest">Al guardar, tus nuevos jornales usaran estos valores por defecto.</p>
               </div>
             </div>
           </div>

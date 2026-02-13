@@ -16,7 +16,7 @@ export const getDayType = (dateString: string): DayType => {
 };
 
 /**
- * Procesa una sola línea de texto para extraer un jornal
+ * Procesa una sola lnea de texto para extraer un jornal
  */
 export const parseSingleLine = (line: string, currentGroup: Group): Partial<ShiftEntry> | null => {
   const upperLine = line.toUpperCase().trim();
@@ -37,7 +37,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
   else if (upperLine.includes('14 A 20')) { shiftKey = '14-20'; shiftLabel = '14-20'; }
   else if (upperLine.includes('20 A 02')) { shiftKey = '20-02'; shiftLabel = '20-02'; }
   
-  if (!shiftKey) return null; // Si no hay turno, no es una línea válida de jornal
+  if (!shiftKey) return null; // Si no hay turno, no es una lnea vlida de jornal
   result.shift = shiftKey;
 
   // Extraer Fecha (DD/MM o DD-MM)
@@ -50,13 +50,13 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
     result.date = `${currentYear}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   }
 
-  // Extraer Producción (número al final o tras el turno)
-  // Intentamos buscar un número decimal al final de la línea
+  // Extraer Produccin (nmero al final o tras el turno)
+  // Intentamos buscar un nmero decimal al final de la lnea
   const numbers = line.match(/\d+([.,]\d+)?/g);
   if (numbers && numbers.length > 0) {
     const lastNum = numbers[numbers.length - 1].replace(',', '.');
-    // Si el último número parece un ID (ej. 4052) y no una producción (ej. 80.42), 
-    // pero el usuario dice que está al final, lo tomamos.
+    // Si el ltimo nmero parece un ID (ej. 4052) y no una produccin (ej. 80.42), 
+    // pero el usuario dice que est al final, lo tomamos.
     result.production = parseFloat(lastNum);
   } else {
     result.production = 0;
@@ -64,7 +64,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
 
   // Extraer Detalles (Especialidad, Empresa, Buque)
   // Formato: ... DE 02 A 08 H. [ESPECIALIDAD] [EMPRESA] [BUQUE] ...
-  const detailsPattern = /DE \d{2} A \d{2} H\.\s+([A-Z0-9ª\s]+?)\s+(CSP|MSCTV|APM|VTE|TES|TERMINAL|MEDITERRANEAN|IBERIAN)/i;
+  const detailsPattern = /DE \d{2} A \d{2} H\.\s+([A-Z0-9\s]+?)\s+(CSP|MSCTV|APM|VTE|TES|TERMINAL|MEDITERRANEAN|IBERIAN)/i;
   const match = upperLine.match(detailsPattern);
 
   if (match) {
@@ -73,7 +73,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
     result.specialty = specialty;
     result.company = company;
     
-    // El buque suele venir después de la empresa en el pegado de tabla
+    // El buque suele venir despus de la empresa en el pegado de tabla
     const remaining = upperLine.split(company)[1] || '';
     const shipMatch = remaining.trim().split(/\t|\s{2,}/)[0];
     if (shipMatch) result.ship = shipMatch.trim();
@@ -87,7 +87,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
 };
 
 /**
- * Procesa un bloque de texto que puede contener múltiples jornales
+ * Procesa un bloque de texto que puede contener mltiples jornales
  */
 export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
   const lines = text.split(/\n/);
