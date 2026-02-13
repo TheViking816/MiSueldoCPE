@@ -76,12 +76,13 @@
     <script>
       if ('serviceWorker' in navigator) {
         const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (!isSecure) return;
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW registrado para MiSueldoCPE'))
-            .catch(() => console.warn('PWA: no se pudo registrar el service worker.'));
-        });
+        if (isSecure) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+              .then(reg => console.log('SW registrado para MiSueldoCPE'))
+              .catch(() => console.warn('PWA: no se pudo registrar el service worker.'));
+          });
+        }
       }
     </script>
 <script type="module" src="./index.tsx"></script>

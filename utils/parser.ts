@@ -1,5 +1,5 @@
 
-import { Group, DayType, ShiftType, ShiftEntry } from '../types';
+import { Group, DayType, ShiftType, ShiftEntry, SalaryTable } from '../types';
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
 export const isHoliday = (dateString: string): boolean => {
@@ -101,14 +101,18 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
   return results;
 };
 
-export const calculateShiftTotal = (entry: Partial<ShiftEntry>, irpfPercent: number = 0): ShiftEntry | null => {
+export const calculateShiftTotal = (
+  entry: Partial<ShiftEntry>,
+  irpfPercent: number = 0,
+  salaryTable: SalaryTable = SALARY_TABLE_2025
+): ShiftEntry | null => {
   if (!entry.date || !entry.group || !entry.shift) return null;
   
   const cleanProduction = Number(entry.production) || 0;
   const dayType = getDayType(entry.date);
   
   // Obtener salario base de la tabla 2025
-  const base = SALARY_TABLE_2025[entry.group][dayType][entry.shift] || 0;
+  const base = salaryTable[entry.group][dayType][entry.shift] || 0;
   const totalBruto = base + cleanProduction;
   const totalNeto = totalBruto * (1 - (irpfPercent / 100));
 

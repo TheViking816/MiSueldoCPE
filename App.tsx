@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Group, ShiftEntry, DayType, ShiftType } from './types';
-import { PROFESSIONAL_GROUPS, SALARY_TABLE_2025 } from './constants';
+import { Group, ShiftEntry, ShiftType } from './types';
+import { PROFESSIONAL_GROUPS } from './constants';
 import { parseBulkText, calculateShiftTotal } from './utils/parser';
+import { parseSalaryTableCsv } from './utils/salaryTable';
 import appLogo from './assets/logo.png';
+import salaryTableCsv from './tabla_salarios_base.csv?raw';
 
 // --- FIREBASE SDK ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -194,6 +196,7 @@ const App: React.FC = () => {
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ShiftEntry | null>(null);
   const [inputText, setInputText] = useState('');
+  const salaryTable = useMemo(() => parseSalaryTableCsv(salaryTableCsv), []);
 
   const recalculateHistoryIrpf = async (nextIrpf: number): Promise<number> => {
     const snapshot = await getDocs(historyCollection);
@@ -306,7 +309,7 @@ const App: React.FC = () => {
         return;
       }
       const saves = partials.map(p => {
-        const fullEntry = calculateShiftTotal(p, irpf);
+        const fullEntry = calculateShiftTotal(p, irpf, salaryTable);
         if (fullEntry) return addDoc(historyCollection, fullEntry);
         return Promise.resolve(null);
       });
@@ -332,7 +335,7 @@ const App: React.FC = () => {
 
   const handleUpdate = async (updated: Partial<ShiftEntry>) => {
     if (!editingEntry) return;
-    const final = calculateShiftTotal({ ...editingEntry, ...updated }, irpf);
+    const final = calculateShiftTotal({ ...editingEntry, ...updated }, irpf, salaryTable);
     if (final) {
       try {
         await setDoc(doc(db, "jornales_valencia", editingEntry.id), final, { merge: true });
@@ -342,12 +345,16 @@ const App: React.FC = () => {
   };
 
   const monthOptions = useMemo(() => {
-    const keys = new Set<string>([currentMonthKey]);
+    const keys = new Set<string>();
     history.forEach((entry) => {
-      const date = String(entry.date || '');
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) keys.add(date.slice(0, 7));
+      const rawDate = String(entry.date || '');
+      const match = rawDate.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (!match) return;
+      const monthKey = `${match[1]}-${String(Number(match[2])).padStart(2, '0')}`;
+      keys.add(monthKey);
     });
-    return Array.from(keys).sort((a, b) => b.localeCompare(a));
+    const sorted = Array.from(keys).sort((a, b) => b.localeCompare(a));
+    return sorted.length > 0 ? sorted : [currentMonthKey];
   }, [history, currentMonthKey]);
 
   const formatMonthLabel = (monthKey: string) => {
@@ -366,17 +373,42 @@ const App: React.FC = () => {
     }, { bruto: 0, neto: 0 });
   };
 
+  const getDateParts = (value: string): { monthKey: string | null; day: number | null } => {
+    const match = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (!match) return { monthKey: null, day: null };
+    return {
+      monthKey: `${match[1]}-${String(Number(match[2])).padStart(2, '0')}`,
+      day: Number(match[3])
+    };
+  };
+
   const monthEntries = useMemo(() => {
-    return history.filter((entry) => String(entry.date || '').startsWith(`${selectedMonth}-`));
+    return history.filter((entry) => {
+      const { monthKey } = getDateParts(String(entry.date || ''));
+      return monthKey === selectedMonth;
+    });
   }, [history, selectedMonth]);
 
   const firstHalfEntries = useMemo(() => {
-    return monthEntries.filter((entry) => Number(String(entry.date).slice(8, 10)) <= 15);
+    return monthEntries.filter((entry) => {
+      const { day } = getDateParts(String(entry.date || ''));
+      return day !== null && day <= 15;
+    });
   }, [monthEntries]);
 
   const secondHalfEntries = useMemo(() => {
-    return monthEntries.filter((entry) => Number(String(entry.date).slice(8, 10)) >= 16);
+    return monthEntries.filter((entry) => {
+      const { day } = getDateParts(String(entry.date || ''));
+      return day !== null && day >= 16;
+    });
   }, [monthEntries]);
+
+  useEffect(() => {
+    // Por defecto mantenemos el mes mas reciente con datos.
+    if (monthOptions.length > 0 && !monthOptions.includes(selectedMonth)) {
+      setSelectedMonth(monthOptions[0]);
+    }
+  }, [monthOptions, selectedMonth]);
 
   const periodEntries = useMemo(() => {
     if (selectedPeriod === 'MONTH') return monthEntries;
