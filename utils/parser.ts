@@ -24,6 +24,14 @@ const getNextDay = (dateString: string): string => {
   return toYmd(d);
 };
 
+const extractProductionAmount = (text: string): number => {
+  const matches = text.match(/\d+[.,]\d+/g);
+  if (!matches || matches.length === 0) return 0;
+  const last = matches[matches.length - 1].replace(',', '.');
+  const amount = Number(last);
+  return Number.isNaN(amount) ? 0 : amount;
+};
+
 export const isHoliday = (dateString: string): boolean => {
   const date = parseLocalDate(dateString);
   const day = date.getDay(); 
@@ -76,13 +84,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
   const productionSource = line
     .replace(/DE\s*\d{1,2}\s*A\s*\d{1,2}\s*H\.?/ig, ' ')
     .replace(/\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/g, ' ');
-  const numbers = productionSource.match(/\d+([.,]\d+)?/g);
-  if (numbers && numbers.length > 0) {
-    const lastNum = numbers[numbers.length - 1].replace(',', '.');
-    result.production = parseFloat(lastNum);
-  } else {
-    result.production = 0;
-  }
+  result.production = extractProductionAmount(productionSource);
 
   // Extraer Detalles (Especialidad, Empresa, Buque)
   // Formato: ... DE 02 A 08 H. [ESPECIALIDAD] [EMPRESA] [BUQUE] ...
@@ -202,11 +204,7 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
           )
       : undefined;
 
-    const numericCandidate = segment
-      .slice(shiftPos + 1)
-      .map((line) => line.trim())
-      .find((line) => /^\d+([.,]\d+)?$/.test(line) && line.length <= 3);
-    const production = numericCandidate ? Number(numericCandidate.replace(',', '.')) : 0;
+    const production = extractProductionAmount(segment.slice(shiftPos + 1).join(' '));
 
     const specialty = specialtyLine ? specialtyLine.toUpperCase() : undefined;
     const group = specialty?.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
