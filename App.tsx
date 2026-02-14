@@ -29,6 +29,8 @@ const db = getFirestore(app);
 const historyCollection = collection(db, "jornales_valencia");
 const settingsDocRef = doc(db, "settings", "user_config");
 
+type ThemeMode = 'light' | 'dark';
+
 // --- COMPONENTES AUXILIARES ---
 
 const ViewTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
@@ -37,6 +39,26 @@ const ViewTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, subt
     {subtitle && <p className="text-xs font-semibold text-safety uppercase tracking-widest">{subtitle}</p>}
   </div>
 );
+
+const normalizeTerminal = (company?: string | null): string => {
+  const cleaned = String(company || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!cleaned) return '';
+
+  if (cleaned.includes('CSP IBERIAN VALENCIA TERMINAL') || cleaned.includes('CSP')) return 'CSP';
+  if (
+    cleaned.includes('MEDITERRANEAN SHIPPING C. TV') ||
+    cleaned.includes('MEDITERRANEAN') ||
+    cleaned.includes('MEDITERRANEAN SHIPPING') ||
+    cleaned.includes('MSCTV') ||
+    cleaned.includes('TV MSC') ||
+    cleaned === 'MSC' ||
+    cleaned.includes(' MSC')
+  ) return 'MSC';
+  if (cleaned.includes('APM')) return 'APM';
+  if (cleaned.includes('VTE')) return 'VTE';
+
+  return '';
+};
 
 const EditModal: React.FC<{ 
   entry: ShiftEntry, 
@@ -104,6 +126,7 @@ const ShiftCard: React.FC<{
   const [showDetails, setShowDetails] = useState(false);
   const dateObj = new Date(entry.date);
   const monthNames = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  const terminalCode = normalizeTerminal(entry.company);
   const grossTotal = Number(entry.total || 0);
   const netWithCurrentIrpf = Number((grossTotal * (1 - currentIrpf / 100)).toFixed(2));
   
@@ -120,8 +143,8 @@ const ShiftCard: React.FC<{
           </div>
           <div className="overflow-hidden">
             <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase mb-0.5">{entry.label}</h4>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-              G.{entry.group} - {entry.dayType} {entry.company ? `- ${entry.company}` : ''}
+            <p className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-tighter">
+              G.{entry.group} - {entry.dayType} {terminalCode ? `- ${terminalCode}` : ''}
             </p>
           </div>
         </div>
@@ -146,7 +169,7 @@ const ShiftCard: React.FC<{
           {entry.ship && (
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Buque / Terminal</p>
-              <p className="text-xs font-bold text-navy-950 dark:text-white truncate">{entry.ship} en {entry.company}</p>
+              <p className="text-xs font-bold text-navy-950 dark:text-white truncate">{entry.ship} en {terminalCode || '-'}</p>
             </div>
           )}
           <div className="flex justify-between items-center px-1 pt-2">
@@ -196,6 +219,14 @@ const App: React.FC = () => {
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ShiftEntry | null>(null);
   const [inputText, setInputText] = useState('');
+  const [theme, setTheme] = useState<ThemeMode>('light');
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [manualShift, setManualShift] = useState<ShiftType>('08-14');
+  const [manualGroup, setManualGroup] = useState<Group>('II');
+  const [manualProduction, setManualProduction] = useState('0');
+  const [manualSpecialty, setManualSpecialty] = useState('Conductor de 1a');
+  const [manualTerminal, setManualTerminal] = useState('CSP');
+  const [manualShip, setManualShip] = useState('');
   const salaryTable = useMemo(() => parseSalaryTableCsv(salaryTableCsv), []);
 
   const recalculateHistoryIrpf = async (nextIrpf: number): Promise<number> => {
@@ -237,6 +268,14 @@ const App: React.FC = () => {
     const localGroup = localStorage.getItem('estiba_group') as Group;
     if (localIrpf) setIrpf(Number(localIrpf));
     if (localGroup) setSelectedGroup(localGroup);
+    if (localGroup) setManualGroup(localGroup);
+
+    const localTheme = localStorage.getItem('estiba_theme');
+    if (localTheme === 'dark' || localTheme === 'light') {
+      setTheme(localTheme);
+    } else {
+      setTheme('light');
+    }
 
     // 2. Cargar preferencias de la nube (settings)
     getDoc(settingsDocRef).then((docSnap) => {
@@ -271,6 +310,15 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('estiba_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    setManualGroup(selectedGroup);
+  }, [selectedGroup]);
 
   // Funcion para guardar ajustes en la nube
   const handleSaveSettings = async () => {
@@ -363,6 +411,44 @@ const App: React.FC = () => {
     return `${monthNames[monthIdx] || month} ${year}`;
   };
 
+  const handleAddManual = async () => {
+    const production = Number(manualProduction.replace(',', '.'));
+    if (!manualDate) return alert("Indica la fecha del jornal.");
+    if (Number.isNaN(production)) return alert("La produccion no es valida.");
+
+    const defaultLabel = `${manualShift} ${manualSpecialty.trim() || 'JORNAL MANUAL'}`.trim();
+    const partial: Partial<ShiftEntry> = {
+      date: manualDate,
+      shift: manualShift,
+      group: manualGroup,
+      production,
+      specialty: manualSpecialty.trim() || undefined,
+      company: manualTerminal.trim() || undefined,
+      ship: manualShip.trim() || undefined,
+      label: defaultLabel
+    };
+
+    setIsSaving(true);
+    try {
+      const fullEntry = calculateShiftTotal(partial, irpf, salaryTable);
+      if (!fullEntry) {
+        alert("No se pudo calcular el jornal manual.");
+        return;
+      }
+
+      await addDoc(historyCollection, fullEntry);
+      alert("Jornal manual guardado.");
+      setManualProduction('0');
+      setManualSpecialty('Conductor de 1a');
+      setManualShip('');
+      setCurrentView('historial');
+    } catch (e: any) {
+      alert("Error al guardar manual: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const calculateTotals = (entries: ShiftEntry[]) => {
     return entries.reduce((acc, curr) => {
       const bruto = Number(curr.total || 0);
@@ -432,7 +518,7 @@ const App: React.FC = () => {
       
       {editingEntry && <EditModal entry={editingEntry} onClose={() => setEditingEntry(null)} onSave={handleUpdate} />}
 
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-navy-950/80 ios-blur border-b dark:border-navy-900 px-5 py-4 flex justify-between items-center">
+      <header className="sticky top-0 z-50 bg-white dark:bg-navy-950/85 ios-blur border-b border-slate-200 dark:border-navy-900 px-5 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-safety/20 bg-white p-1">
             <img src={appLogo} alt="MiSueldoCPE" className="w-full h-full object-contain" />
@@ -520,8 +606,8 @@ const App: React.FC = () => {
 
             <section className="bg-white dark:bg-navy-900 rounded-3xl p-5 border dark:border-navy-800 shadow-sm space-y-4">
               <div className="flex bg-slate-100 dark:bg-navy-800 rounded-xl p-1">
-                <button onClick={() => setEntryMode('smart')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'smart' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-400'}`}>CARGA INTELIGENTE</button>
-                <button onClick={() => setEntryMode('manual')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'manual' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-400'}`}>MANUAL</button>
+                <button onClick={() => setEntryMode('smart')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'smart' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>CARGA INTELIGENTE</button>
+                <button onClick={() => setEntryMode('manual')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'manual' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>MANUAL</button>
               </div>
 
               {entryMode === 'smart' ? (
@@ -538,13 +624,62 @@ const App: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="py-8 text-center text-slate-400 text-xs px-4">
-                  El modo manual esta optimizado para la proxima actualizacion. Por ahora, usa la <strong>Carga Inteligente</strong> pegando el texto de tus jornales.
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Fecha</label>
+                      <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Turno</label>
+                      <select value={manualShift} onChange={e => setManualShift(e.target.value as ShiftType)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                        <option value="02-08">02-08H</option><option value="08-14">08-14H</option><option value="14-20">14-20H</option><option value="20-02">20-02H</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Grupo</label>
+                      <select value={manualGroup} onChange={e => setManualGroup(e.target.value as Group)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                        {PROFESSIONAL_GROUPS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Produccion (EUR)</label>
+                      <input type="number" step="0.01" value={manualProduction} onChange={e => setManualProduction(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Especialidad</label>
+                    <select value={manualSpecialty} onChange={e => setManualSpecialty(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                      <option value="Conductor de 1a">Conductor de 1a</option>
+                      <option value="Conductor de 2a">Conductor de 2a</option>
+                      <option value="Especialista">Especialista</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Terminal</label>
+                    <select value={manualTerminal} onChange={e => setManualTerminal(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                      <option value="CSP">CSP</option>
+                      <option value="MSC">MSC</option>
+                      <option value="APM">APM</option>
+                      <option value="VTE">VTE</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Buque</label>
+                    <input type="text" value={manualShip} onChange={e => setManualShip(e.target.value)} placeholder="Nombre del buque" className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-safety/20" />
+                  </div>
+
                 </div>
               )}
               
               <button 
-                onClick={entryMode === 'smart' ? handleAddSmart : () => alert("Usa el modo inteligente")} 
+                onClick={entryMode === 'smart' ? handleAddSmart : handleAddManual}
                 disabled={isSaving}
                 className="w-full bg-navy-950 dark:bg-safety text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl shadow-safety/10 disabled:opacity-50"
               >
@@ -557,7 +692,7 @@ const App: React.FC = () => {
 
         {currentView === 'historial' && (
           <div className="space-y-4">
-            <ViewTitle title="Mis Registros" subtitle={`${history.length} jornales en la nube`} />
+            <ViewTitle title="Mis Registros" />
             <div className="space-y-3">
               {history.map(entry => <ShiftCard key={entry.id} entry={entry} currentIrpf={irpf} onDelete={handleDelete} onEdit={setEditingEntry} />)}
               {history.length === 0 && !isLoading && (
@@ -574,6 +709,14 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <ViewTitle title="Ajustes" subtitle="Configuracion de Cuenta" />
             <div className="bg-white dark:bg-navy-900 rounded-3xl p-6 border dark:border-navy-800 space-y-8 shadow-sm">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">Tema</label>
+                <div className="flex bg-slate-100 dark:bg-navy-800 rounded-xl p-1">
+                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'light' ? 'bg-white text-navy-950 shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>CLARO</button>
+                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'dark' ? 'bg-navy-700 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>OSCURO</button>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tu Grupo Profesional</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -620,15 +763,15 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-navy-950/95 ios-blur border-t dark:border-navy-900 px-10 py-4 pb-10 flex justify-between items-center z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-navy-950/95 ios-blur border-t border-slate-200 dark:border-navy-900 px-10 py-4 pb-10 flex justify-between items-center z-50">
         {[
           { id: 'resumen', icon: 'dashboard', label: 'Inicio' },
           { id: 'historial', icon: 'history', label: 'Registros' },
           { id: 'perfil', icon: 'settings', label: 'Ajustes' }
         ].map(item => (
-          <button key={item.id} onClick={() => setCurrentView(item.id as any)} className={`flex flex-col items-center gap-1 transition-all ${currentView === item.id ? 'text-safety scale-110' : 'text-slate-400'}`}>
-            <span className="material-symbols-outlined text-[24px] font-light">{item.icon}</span>
-            <span className="text-[8px] font-black uppercase tracking-tighter">{item.label}</span>
+          <button key={item.id} onClick={() => setCurrentView(item.id as any)} className={`flex flex-col items-center gap-0.5 transition-all ${currentView === item.id ? 'text-safety scale-110' : 'text-slate-500 dark:text-slate-300'}`}>
+            <span className="material-symbols-outlined text-[30px] font-light">{item.icon}</span>
+            <span className="text-[11px] font-black uppercase tracking-tight">{item.label}</span>
           </button>
         ))}
       </nav>
