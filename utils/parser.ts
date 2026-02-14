@@ -82,7 +82,7 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
   const year = header?.year ?? now.getFullYear();
 
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
-  const rowRegex = /^(\d{1,3})\s+(\d{3,6})\s+(\d{1,2})\s+([A-Z]{3,4})\s+DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?\s+(.+?)\s+(CSP IBERIAN VALENCIA TERMINAL|MEDITERRANEAN SHIPPING C\.\s*TV|APM|VTE)\s+(.+?)\s+CONT\./i;
+  const rowRegex = /^(\d{1,3})\s+(\d{3,6})\s+(\d{1,2})\s+([A-Z]{3,4})\s+DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?\s+(.+?)\s+(CSP IBERIAN VALENCIA TERMINAL|MEDITERRANEAN SHIPPING C\.\s*TV|APM|VTE)\s+(.+?)\s+CONT\..*?(?:\s+(\d+[.,]\d+)\s*€?)?$/i;
   const out: Partial<ShiftEntry>[] = [];
 
   for (const line of lines) {
@@ -100,12 +100,13 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
     const ship = m[9].trim().toUpperCase();
     const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
     const journalType = parseJournalType(m[4]);
+    const production = extractProductionAmount(m[10] || '');
 
     out.push({
       group,
       shift,
       date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-      production: 0,
+      production,
       specialty: specialty || undefined,
       company: company || undefined,
       ship: ship || undefined,
@@ -119,12 +120,10 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
 
 const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
-  const headerLine = lines.find((line) => /JORNALES\s+DE\s+\w+\s+DE\s+\d{4}/i.test(line));
-  if (!headerLine) return [];
-
-  const header = extractMonthYearFromHeader(headerLine);
-  if (!header) return [];
-  const { month, year } = header;
+  const header = extractMonthYearFromHeader(text);
+  const now = new Date();
+  const month = header?.month ?? now.getMonth() + 1;
+  const year = header?.year ?? now.getFullYear();
 
   const productionHeaderIndex = lines.findIndex((line) => /^PRODUCCI[ÓO]N$/i.test(line));
   const startIndex = productionHeaderIndex >= 0 ? productionHeaderIndex + 1 : 0;
@@ -147,32 +146,55 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
     return true;
   };
 
+  const isMergedRecordStart = (idx: number): boolean => {
+    const journalParte = data[idx];
+    const day = data[idx + 1];
+    const tipo = data[idx + 2];
+    const jornada = data[idx + 3];
+    if (!journalParte || !day || !tipo || !jornada) return false;
+    if (!/^\d{4,7}$/.test(journalParte)) return false;
+    const dayNum = Number(day);
+    if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > 31) return false;
+    if (!/^[A-Z]{3,4}$/i.test(tipo)) return false;
+    if (!parseShiftKey(jornada)) return false;
+    return true;
+  };
+
   let i = 0;
   while (i < data.length) {
-    if (!isRecordStart(i)) {
+    const normalStart = isRecordStart(i);
+    const mergedStart = !normalStart && isMergedRecordStart(i);
+    if (!normalStart && !mergedStart) {
       i += 1;
       continue;
     }
 
-    const day = Number(data[i + 2]);
-    const tipoRaw = data[i + 3] || '';
-    const shift = parseShiftKey(data[i + 4]);
+    const baseOffset = mergedStart ? 1 : 2;
+    const tipoOffset = mergedStart ? 2 : 3;
+    const jornadaOffset = mergedStart ? 3 : 4;
+    const specialtyOffset = mergedStart ? 4 : 5;
+    const companyOffset = mergedStart ? 5 : 6;
+    const shipOffset = mergedStart ? 6 : 7;
+    const operationOffset = mergedStart ? 7 : 8;
+
+    const day = Number(data[i + baseOffset]);
+    const tipoRaw = data[i + tipoOffset] || '';
+    const shift = parseShiftKey(data[i + jornadaOffset]);
     if (!shift) {
       i += 1;
       continue;
     }
 
-    const specialtyRaw = data[i + 5] || '';
-    const companyRaw = data[i + 6] || '';
-    const shipRaw = data[i + 7] || '';
-    const operationRaw = data[i + 8] || '';
-    let cursor = i + 9;
+    const specialtyRaw = data[i + specialtyOffset] || '';
+    const companyRaw = data[i + companyOffset] || '';
+    const shipRaw = data[i + shipOffset] || '';
+    const operationRaw = data[i + operationOffset] || '';
+    let cursor = i + operationOffset + 1;
 
     let production = 0;
     const maybeProduction = data[cursor];
-    if (maybeProduction && !isRecordStart(cursor) && /^\d+([.,]\d+)?$/.test(maybeProduction)) {
-      const parsed = Number(maybeProduction.replace(',', '.'));
-      if (!Number.isNaN(parsed)) production = parsed;
+    if (maybeProduction && !isRecordStart(cursor) && !isMergedRecordStart(cursor) && /\d/.test(maybeProduction)) {
+      production = extractProductionAmount(maybeProduction);
       cursor += 1;
     }
 
@@ -194,7 +216,7 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
     });
 
     // Safety skip for malformed rows without operation text.
-    if (!operationRaw && cursor === i + 9) cursor = i + 9;
+    if (!operationRaw && cursor === i + operationOffset + 1) cursor = i + operationOffset + 1;
     i = cursor;
   }
 

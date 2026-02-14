@@ -152,7 +152,7 @@ const ShiftCard: React.FC<{
             <div className="flex items-center gap-2 mb-0.5">
               <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase">{entry.label}</h4>
               {entry.journalType === 'NUD' && (
-                <span className="text-[8px] font-black uppercase bg-safety text-white px-1.5 py-0.5 rounded-md leading-none">DOBLE</span>
+                <span className="text-[8px] font-black uppercase bg-safety text-white px-1.5 py-0.5 rounded-md leading-none">D</span>
               )}
             </div>
             <p className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-tighter">
@@ -528,6 +528,16 @@ const App: React.FC = () => {
   const monthTotals = useMemo(() => calculateTotals(monthEntries), [monthEntries, irpf]);
   const firstHalfTotals = useMemo(() => calculateTotals(firstHalfEntries), [firstHalfEntries, irpf]);
   const secondHalfTotals = useMemo(() => calculateTotals(secondHalfEntries), [secondHalfEntries, irpf]);
+  const sortedHistory = useMemo(() => {
+    const shiftOrder: Record<ShiftType, number> = { '02-08': 0, '08-14': 1, '14-20': 2, '20-02': 3 };
+    return [...history].sort((a, b) => {
+      const dateDiff = parseLocalYmd(a.date).getTime() - parseLocalYmd(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const shiftDiff = (shiftOrder[a.shift] ?? 99) - (shiftOrder[b.shift] ?? 99);
+      if (shiftDiff !== 0) return shiftDiff;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }, [history]);
 
   const selectedPeriodLabel = selectedPeriod === 'MONTH'
     ? (selectedMonth === ALL_MONTH_KEY ? 'HISTORICO COMPLETO' : 'MES COMPLETO')
@@ -597,6 +607,7 @@ const App: React.FC = () => {
                </div>
 
                <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">{`Balance Neto ${selectedPeriodLabel} - ${formatMonthLabel(selectedMonth)}`}</p>
+               <p className="text-[9px] font-black text-navy-300 uppercase tracking-widest mb-2">{`${periodEntries.length} jornales`}</p>
                <div className="flex items-baseline gap-1">
                  <h2 className="text-4xl font-black text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
                  <span className="text-xl font-bold text-safety">EUR</span>
@@ -615,14 +626,17 @@ const App: React.FC = () => {
                <div className="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/5">
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">Mes</p>
+                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{monthEntries.length} jornales</p>
                    <p className="text-[11px] font-black text-white">{monthTotals.neto.toFixed(2)} EUR</p>
                  </div>
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">1A Quincena</p>
+                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{firstHalfEntries.length} jornales</p>
                    <p className="text-[11px] font-black text-white">{firstHalfTotals.neto.toFixed(2)} EUR</p>
                  </div>
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">2A Quincena</p>
+                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{secondHalfEntries.length} jornales</p>
                    <p className="text-[11px] font-black text-white">{secondHalfTotals.neto.toFixed(2)} EUR</p>
                  </div>
                </div>
@@ -718,7 +732,7 @@ const App: React.FC = () => {
           <div className="space-y-4">
             <ViewTitle title="Mis Registros" />
             <div className="space-y-3">
-              {history.map(entry => <ShiftCard key={entry.id} entry={entry} currentIrpf={irpf} onDelete={handleDelete} onEdit={setEditingEntry} />)}
+              {sortedHistory.map(entry => <ShiftCard key={entry.id} entry={entry} currentIrpf={irpf} onDelete={handleDelete} onEdit={setEditingEntry} />)}
               {history.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400 opacity-40">
                   <span className="material-symbols-outlined text-4xl mb-2">cloud_off</span>
