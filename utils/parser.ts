@@ -55,20 +55,67 @@ const parseShiftKey = (line: string): ShiftType | null => {
   return null;
 };
 
+const extractMonthYearFromHeader = (text: string): { month: number; year: number } | null => {
+  const headerMatch = text.toUpperCase().match(/JORNALES\s+DE\s+([A-ZÁÉÍÓÚÜ]+)\s+DE\s+(\d{4})/);
+  if (!headerMatch) return null;
+
+  const monthName = headerMatch[1]
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const month = MONTH_MAP_ES[monthName];
+  const year = Number(headerMatch[2]);
+  if (!month || Number.isNaN(year)) return null;
+  return { month, year };
+};
+
+const parseCompactTableRows = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
+  const header = extractMonthYearFromHeader(text);
+  const now = new Date();
+  const month = header?.month ?? now.getMonth() + 1;
+  const year = header?.year ?? now.getFullYear();
+
+  const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
+  const rowRegex = /^(\d{1,3})\s+(\d{3,6})\s+(\d{1,2})\s+([A-Z]{3,4})\s+DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?\s+(.+?)\s+(CSP IBERIAN VALENCIA TERMINAL|MEDITERRANEAN SHIPPING C\.\s*TV|APM|VTE)\s+(.+?)\s+CONT\./i;
+  const out: Partial<ShiftEntry>[] = [];
+
+  for (const line of lines) {
+    const m = line.match(rowRegex);
+    if (!m) continue;
+
+    const day = Number(m[3]);
+    if (day < 1 || day > 31) continue;
+
+    const shift = parseShiftKey(`DE ${m[5]} A ${m[6]} H.`);
+    if (!shift) continue;
+
+    const specialty = m[7].trim().toUpperCase();
+    const company = m[8].replace(/\s+/g, ' ').trim().toUpperCase();
+    const ship = m[9].trim().toUpperCase();
+    const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
+
+    out.push({
+      group,
+      shift,
+      date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+      production: 0,
+      specialty: specialty || undefined,
+      company: company || undefined,
+      ship: ship || undefined,
+      label: specialty ? `${shift} ${specialty}` : `${shift} JORNAL ESTIBA`
+    });
+  }
+
+  return out;
+};
+
 const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
   const headerLine = lines.find((line) => /JORNALES\s+DE\s+\w+\s+DE\s+\d{4}/i.test(line));
   if (!headerLine) return [];
 
-  const headerMatch = headerLine.toUpperCase().match(/JORNALES\s+DE\s+([A-ZÁÉÍÓÚÜ]+)\s+DE\s+(\d{4})/);
-  if (!headerMatch) return [];
-
-  const monthName = headerMatch[1]
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  const year = Number(headerMatch[2]);
-  const month = MONTH_MAP_ES[monthName];
-  if (!month || Number.isNaN(year)) return [];
+  const header = extractMonthYearFromHeader(headerLine);
+  if (!header) return [];
+  const { month, year } = header;
 
   const productionHeaderIndex = lines.findIndex((line) => /^PRODUCCI[ÓO]N$/i.test(line));
   const startIndex = productionHeaderIndex >= 0 ? productionHeaderIndex + 1 : 0;
@@ -146,8 +193,10 @@ const findDayTokenInLine = (line: string): number | null => {
   const withoutShift = line.replace(/DE\s*\d{1,2}\s*[A\-]\s*\d{1,2}\s*H?\.?/ig, ' ');
   const tokens = withoutShift.match(/\b\d{1,2}\b/g);
   if (!tokens) return null;
-  for (const token of tokens) {
-    const day = Number(token);
+  // In compact table rows the first token can be "Jornal" (e.g. 3/4).
+  // Prefer the last short numeric token, which aligns with "Dia" in that format.
+  for (let i = tokens.length - 1; i >= 0; i -= 1) {
+    const day = Number(tokens[i]);
     if (day >= 1 && day <= 31) return day;
   }
   return null;
@@ -233,6 +282,9 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
 export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
   const portalTableParsed = parsePortalTableText(text, currentGroup);
   if (portalTableParsed.length > 0) return portalTableParsed;
+
+  const compactRowsParsed = parseCompactTableRows(text, currentGroup);
+  if (compactRowsParsed.length > 0) return compactRowsParsed;
 
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
   const results: Partial<ShiftEntry>[] = [];
