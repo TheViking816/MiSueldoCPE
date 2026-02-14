@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Group, ShiftEntry, ShiftType } from './types';
 import { PROFESSIONAL_GROUPS } from './constants';
 import { parseBulkText, calculateShiftTotal } from './utils/parser';
-import { parseSalaryTableCsv } from './utils/salaryTable';
+import { parseSalaryTableCsv, parseFestiveNightRatesCsv } from './utils/salaryTable';
 import appLogo from './assets/logo.png';
 import salaryTableCsv from './tabla_salarios_base.csv?raw';
 
@@ -228,6 +228,7 @@ const App: React.FC = () => {
   const [manualTerminal, setManualTerminal] = useState('CSP');
   const [manualShip, setManualShip] = useState('');
   const salaryTable = useMemo(() => parseSalaryTableCsv(salaryTableCsv), []);
+  const festiveNightRates = useMemo(() => parseFestiveNightRatesCsv(salaryTableCsv, salaryTable), [salaryTable]);
 
   const recalculateHistoryIrpf = async (nextIrpf: number): Promise<number> => {
     const snapshot = await getDocs(historyCollection);
@@ -357,7 +358,7 @@ const App: React.FC = () => {
         return;
       }
       const saves = partials.map(p => {
-        const fullEntry = calculateShiftTotal(p, irpf, salaryTable);
+        const fullEntry = calculateShiftTotal(p, irpf, salaryTable, festiveNightRates);
         if (fullEntry) return addDoc(historyCollection, fullEntry);
         return Promise.resolve(null);
       });
@@ -383,7 +384,7 @@ const App: React.FC = () => {
 
   const handleUpdate = async (updated: Partial<ShiftEntry>) => {
     if (!editingEntry) return;
-    const final = calculateShiftTotal({ ...editingEntry, ...updated }, irpf, salaryTable);
+    const final = calculateShiftTotal({ ...editingEntry, ...updated }, irpf, salaryTable, festiveNightRates);
     if (final) {
       try {
         await setDoc(doc(db, "jornales_valencia", editingEntry.id), final, { merge: true });
@@ -430,7 +431,7 @@ const App: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const fullEntry = calculateShiftTotal(partial, irpf, salaryTable);
+      const fullEntry = calculateShiftTotal(partial, irpf, salaryTable, festiveNightRates);
       if (!fullEntry) {
         alert("No se pudo calcular el jornal manual.");
         return;

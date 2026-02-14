@@ -1,13 +1,9 @@
 
-import { Group, DayType, ShiftType, ShiftEntry, SalaryTable } from '../types';
+import { Group, DayType, ShiftType, ShiftEntry, SalaryTable, FestiveNightRates } from '../types';
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
 const SHIFT_REGEX = /DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?/i;
 const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
-const FESTIVE_NIGHT_BASE = {
-  FESTIVO_TO_LABORABLE: { I: 302.48, II: 312.34, III: 323.86, IV: 342.76 },
-  FESTIVO_TO_FESTIVO: { I: 341.46, II: 352.64, III: 365.62, IV: 386.98 }
-} as const;
 
 const parseLocalDate = (dateString: string): Date => {
   const [y, m, d] = String(dateString).split('-').map(Number);
@@ -234,7 +230,8 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
 export const calculateShiftTotal = (
   entry: Partial<ShiftEntry>,
   irpfPercent: number = 0,
-  salaryTable: SalaryTable = SALARY_TABLE_2025
+  salaryTable: SalaryTable = SALARY_TABLE_2025,
+  festiveNightRates?: FestiveNightRates
 ): ShiftEntry | null => {
   if (!entry.date || !entry.group || !entry.shift) return null;
   
@@ -247,7 +244,8 @@ export const calculateShiftTotal = (
     const nextDay = getNextDay(entry.date);
     const nextIsFestive = isHoliday(nextDay);
     const key = nextIsFestive ? 'FESTIVO_TO_FESTIVO' : 'FESTIVO_TO_LABORABLE';
-    base = FESTIVE_NIGHT_BASE[key][entry.group];
+    const fallback = salaryTable[entry.group].FESTIVO['20-02'] || 0;
+    base = festiveNightRates?.[key]?.[entry.group] ?? fallback;
   }
 
   const totalBruto = base + cleanProduction;
