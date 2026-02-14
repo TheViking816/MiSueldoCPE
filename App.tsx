@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Group, ShiftEntry, ShiftType } from './types';
 import { PROFESSIONAL_GROUPS } from './constants';
-import { parseBulkText, calculateShiftTotal } from './utils/parser';
+import { parseBulkText, calculateShiftTotal, getDayType } from './utils/parser';
 import { parseSalaryTableCsv, parseFestiveNightRatesCsv } from './utils/salaryTable';
 import appLogo from './assets/logo.png';
 import salaryTableCsv from './tabla_salarios_base.csv?raw';
@@ -58,6 +58,12 @@ const normalizeTerminal = (company?: string | null): string => {
   if (cleaned.includes('VTE')) return 'VTE';
 
   return '';
+};
+
+const parseLocalYmd = (value: string): Date => {
+  const [y, m, d] = String(value).split('-').map(Number);
+  if (!y || !m || !d) return new Date(value);
+  return new Date(y, m - 1, d);
 };
 
 const EditModal: React.FC<{ 
@@ -124,7 +130,8 @@ const ShiftCard: React.FC<{
   onEdit: (entry: ShiftEntry) => void 
 }> = ({ entry, currentIrpf, onDelete, onEdit }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const dateObj = new Date(entry.date);
+  const dateObj = parseLocalYmd(entry.date);
+  const displayDayType = getDayType(entry.date);
   const monthNames = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
   const terminalCode = normalizeTerminal(entry.company);
   const grossTotal = Number(entry.total || 0);
@@ -144,7 +151,7 @@ const ShiftCard: React.FC<{
           <div className="overflow-hidden">
             <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase mb-0.5">{entry.label}</h4>
             <p className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-tighter">
-              G.{entry.group} - {entry.dayType} {terminalCode ? `- ${terminalCode}` : ''}
+              G.{entry.group} - {displayDayType} {terminalCode ? `- ${terminalCode}` : ''}
             </p>
           </div>
         </div>
