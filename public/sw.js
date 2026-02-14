@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'misueldocpe-v2';
+const CACHE_NAME = 'misueldocpe-v3-20260214';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,6 +29,20 @@ self.addEventListener('fetch', (event) => {
 
   const reqUrl = new URL(event.request.url);
   if (reqUrl.origin !== self.location.origin) return;
+
+  // For app navigations, prefer fresh HTML to avoid stale UI after deploys.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkRes) => {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+          return networkRes;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
