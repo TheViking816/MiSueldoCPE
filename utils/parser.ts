@@ -2,6 +2,9 @@
 import { Group, DayType, ShiftType, ShiftEntry, SalaryTable } from '../types';
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
+const SHIFT_REGEX = /DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?/i;
+const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
+
 export const isHoliday = (dateString: string): boolean => {
   const date = new Date(dateString);
   const day = date.getDay(); 
@@ -50,13 +53,13 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
     result.date = `${currentYear}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   }
 
-  // Extraer Produccin (nmero al final o tras el turno)
-  // Intentamos buscar un nmero decimal al final de la lnea
-  const numbers = line.match(/\d+([.,]\d+)?/g);
+  // Extraer Produccion evitando capturar los numeros del turno/fecha.
+  const productionSource = line
+    .replace(/DE\s*\d{1,2}\s*A\s*\d{1,2}\s*H\.?/ig, ' ')
+    .replace(/\b\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?\b/g, ' ');
+  const numbers = productionSource.match(/\d+([.,]\d+)?/g);
   if (numbers && numbers.length > 0) {
     const lastNum = numbers[numbers.length - 1].replace(',', '.');
-    // Si el ltimo nmero parece un ID (ej. 4052) y no una produccin (ej. 80.42), 
-    // pero el usuario dice que est al final, lo tomamos.
     result.production = parseFloat(lastNum);
   } else {
     result.production = 0;
@@ -90,12 +93,116 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
  * Procesa un bloque de texto que puede contener mltiples jornales
  */
 export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
-  const lines = text.split(/\n/);
+  const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
   const results: Partial<ShiftEntry>[] = [];
 
-  for (const line of lines) {
-    const parsed = parseSingleLine(line, currentGroup);
-    if (parsed) results.push(parsed);
+  const shiftIndexes = lines
+    .map((line, index) => (SHIFT_REGEX.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (shiftIndexes.length === 0) {
+    for (const line of lines) {
+      const parsed = parseSingleLine(line, currentGroup);
+      if (parsed) results.push(parsed);
+    }
+    return results;
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const parseShiftKey = (line: string): ShiftType | null => {
+    const upper = line.toUpperCase();
+    if (upper.includes('02 A 08')) return '02-08';
+    if (upper.includes('08 A 14')) return '08-14';
+    if (upper.includes('14 A 20')) return '14-20';
+    if (upper.includes('20 A 02')) return '20-02';
+    return null;
+  };
+
+  const findStandaloneDay = (segment: string[], shiftPos: number): number | null => {
+    for (let i = shiftPos - 1; i >= 0; i -= 1) {
+      if (/^\d{1,2}$/.test(segment[i])) {
+        const day = Number(segment[i]);
+        if (day >= 1 && day <= 31) return day;
+      }
+    }
+    for (let i = shiftPos + 1; i < segment.length; i += 1) {
+      if (/^\d{1,2}$/.test(segment[i])) {
+        const day = Number(segment[i]);
+        if (day >= 1 && day <= 31) return day;
+      }
+    }
+    return null;
+  };
+
+  for (let i = 0; i < shiftIndexes.length; i += 1) {
+    const shiftIndex = shiftIndexes[i];
+    const nextShiftIndex = shiftIndexes[i + 1] ?? lines.length;
+    const segmentStart = i === 0 ? 0 : shiftIndexes[i - 1] + 1;
+    const segment = lines.slice(segmentStart, nextShiftIndex);
+    const shiftPos = shiftIndex - segmentStart;
+    const shiftLine = segment[shiftPos];
+    const shift = parseShiftKey(shiftLine);
+    if (!shift) continue;
+
+    const ddMm = segment.join(' ').match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
+    let date = '';
+    if (ddMm) {
+      const day = Number(ddMm[1]);
+      const month = Number(ddMm[2]);
+      const rawYear = ddMm[3];
+      const year = rawYear ? Number(rawYear.length === 2 ? `20${rawYear}` : rawYear) : currentYear;
+      date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    } else {
+      const day = findStandaloneDay(segment, shiftPos) ?? now.getDate();
+      date = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    const company = segment.find((line) => COMPANY_REGEX.test(line));
+
+    const specialtyLine = segment
+      .slice(shiftPos + 1)
+      .find((line) =>
+        /[A-Za-z]/.test(line) &&
+        !COMPANY_REGEX.test(line) &&
+        !/^CONT[.\s/]/i.test(line) &&
+        !/^(TUR|NUD)$/i.test(line)
+      );
+
+    const companyIndex = company ? segment.indexOf(company) : -1;
+    const ship = companyIndex >= 0
+      ? segment
+          .slice(companyIndex + 1)
+          .find((line) =>
+            /[A-Za-z]/.test(line) &&
+            !COMPANY_REGEX.test(line) &&
+            !/^CONT[.\s/]/i.test(line) &&
+            !/^(TUR|NUD)$/i.test(line)
+          )
+      : undefined;
+
+    const numericCandidate = segment
+      .slice(shiftPos + 1)
+      .map((line) => line.trim())
+      .find((line) => /^\d+([.,]\d+)?$/.test(line) && line.length <= 3);
+    const production = numericCandidate ? Number(numericCandidate.replace(',', '.')) : 0;
+
+    const specialty = specialtyLine ? specialtyLine.toUpperCase() : undefined;
+    const group = specialty?.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
+    const shiftLabel = shift;
+
+    results.push({
+      group,
+      shift,
+      date,
+      production,
+      specialty,
+      company: company ? company.toUpperCase() : undefined,
+      ship: ship ? ship.toUpperCase() : undefined,
+      label: specialty ? `${shiftLabel} ${specialty}` : `${shiftLabel} JORNAL ESTIBA`
+    });
   }
 
   return results;
