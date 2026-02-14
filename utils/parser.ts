@@ -3,6 +3,21 @@ import { Group, DayType, ShiftType, ShiftEntry, SalaryTable, FestiveNightRates }
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
 const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
+const MONTH_MAP_ES: Record<string, number> = {
+  ENERO: 1,
+  FEBRERO: 2,
+  MARZO: 3,
+  ABRIL: 4,
+  MAYO: 5,
+  JUNIO: 6,
+  JULIO: 7,
+  AGOSTO: 8,
+  SEPTIEMBRE: 9,
+  SETIEMBRE: 9,
+  OCTUBRE: 10,
+  NOVIEMBRE: 11,
+  DICIEMBRE: 12
+};
 
 const parseLocalDate = (dateString: string): Date => {
   const [y, m, d] = String(dateString).split('-').map(Number);
@@ -38,6 +53,93 @@ const parseShiftKey = (line: string): ShiftType | null => {
   if (/\b14\D+20\b/.test(upper)) return '14-20';
   if (/\b20\D+0?2\b/.test(upper)) return '20-02';
   return null;
+};
+
+const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
+  const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
+  const headerLine = lines.find((line) => /JORNALES\s+DE\s+\w+\s+DE\s+\d{4}/i.test(line));
+  if (!headerLine) return [];
+
+  const headerMatch = headerLine.toUpperCase().match(/JORNALES\s+DE\s+([A-ZÁÉÍÓÚÜ]+)\s+DE\s+(\d{4})/);
+  if (!headerMatch) return [];
+
+  const monthName = headerMatch[1]
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const year = Number(headerMatch[2]);
+  const month = MONTH_MAP_ES[monthName];
+  if (!month || Number.isNaN(year)) return [];
+
+  const productionHeaderIndex = lines.findIndex((line) => /^PRODUCCI[ÓO]N$/i.test(line));
+  const startIndex = productionHeaderIndex >= 0 ? productionHeaderIndex + 1 : 0;
+  const data = lines.slice(startIndex).filter((line) => !/^VOLVER$/i.test(line));
+  const results: Partial<ShiftEntry>[] = [];
+
+  const isRecordStart = (idx: number): boolean => {
+    const jornal = data[idx];
+    const parte = data[idx + 1];
+    const day = data[idx + 2];
+    const tipo = data[idx + 3];
+    const jornada = data[idx + 4];
+    if (!jornal || !parte || !day || !tipo || !jornada) return false;
+    if (!/^\d{1,3}$/.test(jornal)) return false;
+    if (!/^\d{3,6}$/.test(parte)) return false;
+    const dayNum = Number(day);
+    if (!Number.isInteger(dayNum) || dayNum < 1 || dayNum > 31) return false;
+    if (!/^[A-Z]{3,4}$/i.test(tipo)) return false;
+    if (!parseShiftKey(jornada)) return false;
+    return true;
+  };
+
+  let i = 0;
+  while (i < data.length) {
+    if (!isRecordStart(i)) {
+      i += 1;
+      continue;
+    }
+
+    const day = Number(data[i + 2]);
+    const shift = parseShiftKey(data[i + 4]);
+    if (!shift) {
+      i += 1;
+      continue;
+    }
+
+    const specialtyRaw = data[i + 5] || '';
+    const companyRaw = data[i + 6] || '';
+    const shipRaw = data[i + 7] || '';
+    const operationRaw = data[i + 8] || '';
+    let cursor = i + 9;
+
+    let production = 0;
+    const maybeProduction = data[cursor];
+    if (maybeProduction && !isRecordStart(cursor) && /^\d+([.,]\d+)?$/.test(maybeProduction)) {
+      const parsed = Number(maybeProduction.replace(',', '.'));
+      if (!Number.isNaN(parsed)) production = parsed;
+      cursor += 1;
+    }
+
+    const specialty = specialtyRaw.toUpperCase();
+    const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    results.push({
+      group,
+      shift,
+      date,
+      production,
+      specialty: specialty || undefined,
+      company: companyRaw ? companyRaw.toUpperCase() : undefined,
+      ship: shipRaw ? shipRaw.toUpperCase() : undefined,
+      label: specialty ? `${shift} ${specialty}` : `${shift} JORNAL ESTIBA`
+    });
+
+    // Safety skip for malformed rows without operation text.
+    if (!operationRaw && cursor === i + 9) cursor = i + 9;
+    i = cursor;
+  }
+
+  return results;
 };
 
 const findDayTokenInLine = (line: string): number | null => {
@@ -129,6 +231,9 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
  * Procesa un bloque de texto que puede contener mltiples jornales
  */
 export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftEntry>[] => {
+  const portalTableParsed = parsePortalTableText(text, currentGroup);
+  if (portalTableParsed.length > 0) return portalTableParsed;
+
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
   const results: Partial<ShiftEntry>[] = [];
 
