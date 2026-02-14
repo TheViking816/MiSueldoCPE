@@ -541,7 +541,7 @@ const App: React.FC = () => {
   const sortedHistory = useMemo(() => {
     const shiftOrder: Record<ShiftType, number> = { '02-08': 0, '08-14': 1, '14-20': 2, '20-02': 3 };
     return [...history].sort((a, b) => {
-      const dateDiff = parseLocalYmd(a.date).getTime() - parseLocalYmd(b.date).getTime();
+      const dateDiff = parseLocalYmd(b.date).getTime() - parseLocalYmd(a.date).getTime();
       if (dateDiff !== 0) return dateDiff;
       const shiftDiff = (shiftOrder[a.shift] ?? 99) - (shiftOrder[b.shift] ?? 99);
       if (shiftDiff !== 0) return shiftDiff;
