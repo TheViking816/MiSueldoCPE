@@ -33,10 +33,21 @@ const extractProductionAmount = (text: string): number => {
 
 const parseShiftKey = (line: string): ShiftType | null => {
   const upper = line.toUpperCase().replace(/\s+/g, ' ').trim();
-  if (upper.includes('02 A 08')) return '02-08';
-  if (upper.includes('08 A 14')) return '08-14';
-  if (upper.includes('14 A 20')) return '14-20';
-  if (upper.includes('20 A 02')) return '20-02';
+  if (/\b0?2\D+0?8\b/.test(upper)) return '02-08';
+  if (/\b0?8\D+14\b/.test(upper)) return '08-14';
+  if (/\b14\D+20\b/.test(upper)) return '14-20';
+  if (/\b20\D+0?2\b/.test(upper)) return '20-02';
+  return null;
+};
+
+const findDayTokenInLine = (line: string): number | null => {
+  const withoutShift = line.replace(/DE\s*\d{1,2}\s*[A\-]\s*\d{1,2}\s*H?\.?/ig, ' ');
+  const tokens = withoutShift.match(/\b\d{1,2}\b/g);
+  if (!tokens) return null;
+  for (const token of tokens) {
+    const day = Number(token);
+    if (day >= 1 && day <= 31) return day;
+  }
   return null;
 };
 
@@ -68,12 +79,8 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
   }
 
   // Identificar Turno
-  let shiftKey: ShiftType | undefined;
-  let shiftLabel = '';
-  if (upperLine.includes('02 A 08')) { shiftKey = '02-08'; shiftLabel = '02-08'; }
-  else if (upperLine.includes('08 A 14')) { shiftKey = '08-14'; shiftLabel = '08-14'; }
-  else if (upperLine.includes('14 A 20')) { shiftKey = '14-20'; shiftLabel = '14-20'; }
-  else if (upperLine.includes('20 A 02')) { shiftKey = '20-02'; shiftLabel = '20-02'; }
+  const shiftKey = parseShiftKey(upperLine) || undefined;
+  const shiftLabel = shiftKey || '';
   
   if (!shiftKey) return null; // Si no hay turno, no es una lnea vlida de jornal
   result.shift = shiftKey;
@@ -174,6 +181,18 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
     return null;
   };
 
+  const findNearbyDayToken = (segment: string[], shiftPos: number): number | null => {
+    for (let i = shiftPos; i >= 0; i -= 1) {
+      const day = findDayTokenInLine(segment[i]);
+      if (day !== null) return day;
+    }
+    for (let i = shiftPos + 1; i < segment.length; i += 1) {
+      const day = findDayTokenInLine(segment[i]);
+      if (day !== null) return day;
+    }
+    return null;
+  };
+
   for (let i = 0; i < shiftIndexes.length; i += 1) {
     const shiftIndex = shiftIndexes[i];
     const nextShiftIndex = shiftIndexes[i + 1] ?? lines.length;
@@ -193,7 +212,7 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
       const year = rawYear ? Number(rawYear.length === 2 ? `20${rawYear}` : rawYear) : currentYear;
       date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     } else {
-      const day = findStandaloneDay(segment, shiftPos) ?? now.getDate();
+      const day = findStandaloneDay(segment, shiftPos) ?? findNearbyDayToken(segment, shiftPos) ?? now.getDate();
       date = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 

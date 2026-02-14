@@ -209,6 +209,7 @@ const ShiftCard: React.FC<{
 
 const App: React.FC = () => {
   type PeriodFilter = 'Q1' | 'Q2' | 'MONTH';
+  const ALL_MONTH_KEY = 'ALL';
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentQuincena: PeriodFilter = now.getDate() <= 15 ? 'Q1' : 'Q2';
@@ -218,8 +219,8 @@ const App: React.FC = () => {
   const [entryMode, setEntryMode] = useState<'smart' | 'manual'>('smart');
   const [selectedGroup, setSelectedGroup] = useState<Group>('II');
   const [irpf, setIrpf] = useState<number>(15);
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(currentQuincena);
+  const [selectedMonth, setSelectedMonth] = useState<string>(ALL_MONTH_KEY);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('MONTH');
   const [history, setHistory] = useState<ShiftEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -410,10 +411,11 @@ const App: React.FC = () => {
       keys.add(monthKey);
     });
     const sorted = Array.from(keys).sort((a, b) => b.localeCompare(a));
-    return sorted.length > 0 ? sorted : [currentMonthKey];
+    return [ALL_MONTH_KEY, ...(sorted.length > 0 ? sorted : [currentMonthKey])];
   }, [history, currentMonthKey]);
 
   const formatMonthLabel = (monthKey: string) => {
+    if (monthKey === ALL_MONTH_KEY) return 'TODO';
     const [year, month] = monthKey.split('-');
     const monthIdx = Number(month) - 1;
     return `${monthNames[monthIdx] || month} ${year}`;
@@ -477,6 +479,7 @@ const App: React.FC = () => {
   };
 
   const monthEntries = useMemo(() => {
+    if (selectedMonth === ALL_MONTH_KEY) return history;
     return history.filter((entry) => {
       const { monthKey } = getDateParts(String(entry.date || ''));
       return monthKey === selectedMonth;
@@ -504,6 +507,12 @@ const App: React.FC = () => {
     }
   }, [monthOptions, selectedMonth]);
 
+  useEffect(() => {
+    if (selectedMonth === ALL_MONTH_KEY && selectedPeriod !== 'MONTH') {
+      setSelectedPeriod('MONTH');
+    }
+  }, [selectedMonth, selectedPeriod]);
+
   const periodEntries = useMemo(() => {
     if (selectedPeriod === 'MONTH') return monthEntries;
     if (selectedPeriod === 'Q1') return firstHalfEntries;
@@ -516,7 +525,7 @@ const App: React.FC = () => {
   const secondHalfTotals = useMemo(() => calculateTotals(secondHalfEntries), [secondHalfEntries, irpf]);
 
   const selectedPeriodLabel = selectedPeriod === 'MONTH'
-    ? 'MES COMPLETO'
+    ? (selectedMonth === ALL_MONTH_KEY ? 'HISTORICO COMPLETO' : 'MES COMPLETO')
     : selectedPeriod === 'Q1'
       ? '1A QUINCENA'
       : '2A QUINCENA';
@@ -562,12 +571,14 @@ const App: React.FC = () => {
                <div className="grid grid-cols-3 gap-2 mb-4">
                  <button
                    onClick={() => setSelectedPeriod('Q1')}
+                   disabled={selectedMonth === ALL_MONTH_KEY}
                    className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
                  >
                    1A Q
                  </button>
                  <button
                    onClick={() => setSelectedPeriod('Q2')}
+                   disabled={selectedMonth === ALL_MONTH_KEY}
                    className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
                  >
                    2A Q
