@@ -370,6 +370,16 @@ const App: React.FC = () => {
         setIsSaving(false);
         return;
       }
+      const productionDebug = partials.map((p, idx) => ({
+        idx: idx + 1,
+        date: p.date,
+        shift: p.shift,
+        label: p.label,
+        production: Number(p.production || 0)
+      }));
+      console.table(productionDebug);
+      alert(`DEBUG produccion detectada:\n${productionDebug.map((r) => `${r.idx}) ${r.date} ${r.shift} -> ${r.production.toFixed(2)} EUR`).join('\n')}`);
+
       const saves = partials.map(p => {
         const fullEntry = calculateShiftTotal(p, irpf, salaryTable, festiveNightRates);
         if (fullEntry) return addDoc(historyCollection, fullEntry);
@@ -529,7 +539,7 @@ const App: React.FC = () => {
   const firstHalfTotals = useMemo(() => calculateTotals(firstHalfEntries), [firstHalfEntries, irpf]);
   const secondHalfTotals = useMemo(() => calculateTotals(secondHalfEntries), [secondHalfEntries, irpf]);
   const sortedHistory = useMemo(() => {
-    const shiftOrder: Record<ShiftType, number> = { '02-08': 0, '08-14': 1, '14-20': 2, '20-02': 3 };
+    const shiftOrder: Record<ShiftType, number> = { '02-08': 0, '20-02': 1, '08-14': 2, '14-20': 3 };
     return [...history].sort((a, b) => {
       const dateDiff = parseLocalYmd(b.date).getTime() - parseLocalYmd(a.date).getTime();
       if (dateDiff !== 0) return dateDiff;
