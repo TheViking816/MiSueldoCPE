@@ -4,16 +4,39 @@ import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
 const SHIFT_REGEX = /DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?/i;
 const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
+const FESTIVE_NIGHT_BASE = {
+  FESTIVO_TO_LABORABLE: { I: 302.48, II: 312.34, III: 323.86, IV: 342.76 },
+  FESTIVO_TO_FESTIVO: { I: 341.46, II: 352.64, III: 365.62, IV: 386.98 }
+} as const;
+
+const parseLocalDate = (dateString: string): Date => {
+  const [y, m, d] = String(dateString).split('-').map(Number);
+  if (!y || !m || !d) return new Date(dateString);
+  return new Date(y, m - 1, d);
+};
+
+const toYmd = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const getNextDay = (dateString: string): string => {
+  const d = parseLocalDate(dateString);
+  d.setDate(d.getDate() + 1);
+  return toYmd(d);
+};
 
 export const isHoliday = (dateString: string): boolean => {
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
   const day = date.getDay(); 
   return day === 0 || VALENCIA_HOLIDAYS_2026.includes(dateString);
 };
 
 export const getDayType = (dateString: string): DayType => {
   if (isHoliday(dateString)) return 'FESTIVO';
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
   if (date.getDay() === 6) return 'SABADO';
   return 'LABORABLE';
 };
@@ -218,8 +241,15 @@ export const calculateShiftTotal = (
   const cleanProduction = Number(entry.production) || 0;
   const dayType = getDayType(entry.date);
   
-  // Obtener salario base de la tabla 2025
-  const base = salaryTable[entry.group][dayType][entry.shift] || 0;
+  // Regla especial: jornada 20-02 en festivo depende de si el dia siguiente tambien es festivo.
+  let base = salaryTable[entry.group][dayType][entry.shift] || 0;
+  if (dayType === 'FESTIVO' && entry.shift === '20-02') {
+    const nextDay = getNextDay(entry.date);
+    const nextIsFestive = isHoliday(nextDay);
+    const key = nextIsFestive ? 'FESTIVO_TO_FESTIVO' : 'FESTIVO_TO_LABORABLE';
+    base = FESTIVE_NIGHT_BASE[key][entry.group];
+  }
+
   const totalBruto = base + cleanProduction;
   const totalNeto = totalBruto * (1 - (irpfPercent / 100));
 
