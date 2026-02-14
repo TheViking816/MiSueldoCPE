@@ -3,6 +3,7 @@ export type Group = 'I' | 'II' | 'III' | 'IV';
 export type DayType = 'LABORABLE' | 'SABADO' | 'FESTIVO';
 export type ShiftType = '02-08' | '08-14' | '14-20' | '20-02';
 export type FestiveNightTransition = 'FESTIVO_TO_LABORABLE' | 'FESTIVO_TO_FESTIVO';
+export type JournalType = 'TUR' | 'NUD';
 
 export interface SalaryRow {
   [key: string]: number;
@@ -38,4 +39,5 @@ export interface ShiftEntry {
   specialty?: string;
   company?: string;
   ship?: string;
+  journalType?: JournalType;
 }

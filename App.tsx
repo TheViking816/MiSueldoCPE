@@ -149,7 +149,12 @@ const ShiftCard: React.FC<{
             <span className="text-sm font-black text-navy-950 dark:text-white leading-none">{dateObj.getDate()}</span>
           </div>
           <div className="overflow-hidden">
-            <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase mb-0.5">{entry.label}</h4>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h4 className="font-bold text-xs text-navy-950 dark:text-slate-200 tracking-tight truncate uppercase">{entry.label}</h4>
+              {entry.journalType === 'NUD' && (
+                <span className="text-[8px] font-black uppercase bg-safety text-white px-1.5 py-0.5 rounded-md leading-none">DOBLE</span>
+              )}
+            </div>
             <p className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-tighter">
               G.{entry.group} - {displayDayType} {terminalCode ? `- ${terminalCode}` : ''}
             </p>

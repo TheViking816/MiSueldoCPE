@@ -1,5 +1,5 @@
 
-import { Group, DayType, ShiftType, ShiftEntry, SalaryTable, FestiveNightRates } from '../types';
+import { Group, DayType, ShiftType, ShiftEntry, SalaryTable, FestiveNightRates, JournalType } from '../types';
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
 const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
@@ -44,6 +44,13 @@ const extractProductionAmount = (text: string): number => {
   const last = matches[matches.length - 1].replace(',', '.');
   const amount = Number(last);
   return Number.isNaN(amount) ? 0 : amount;
+};
+
+const parseJournalType = (line: string): JournalType | undefined => {
+  const upper = line.toUpperCase();
+  if (/\bNUD\b/.test(upper)) return 'NUD';
+  if (/\bTUR\b/.test(upper)) return 'TUR';
+  return undefined;
 };
 
 const parseShiftKey = (line: string): ShiftType | null => {
@@ -92,6 +99,7 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
     const company = m[8].replace(/\s+/g, ' ').trim().toUpperCase();
     const ship = m[9].trim().toUpperCase();
     const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
+    const journalType = parseJournalType(m[4]);
 
     out.push({
       group,
@@ -101,6 +109,7 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
       specialty: specialty || undefined,
       company: company || undefined,
       ship: ship || undefined,
+      journalType,
       label: specialty ? `${shift} ${specialty}` : `${shift} JORNAL ESTIBA`
     });
   }
@@ -146,6 +155,7 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
     }
 
     const day = Number(data[i + 2]);
+    const tipoRaw = data[i + 3] || '';
     const shift = parseShiftKey(data[i + 4]);
     if (!shift) {
       i += 1;
@@ -169,6 +179,7 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
     const specialty = specialtyRaw.toUpperCase();
     const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
     const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const journalType = parseJournalType(tipoRaw);
 
     results.push({
       group,
@@ -178,6 +189,7 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
       specialty: specialty || undefined,
       company: companyRaw ? companyRaw.toUpperCase() : undefined,
       ship: shipRaw ? shipRaw.toUpperCase() : undefined,
+      journalType,
       label: specialty ? `${shift} ${specialty}` : `${shift} JORNAL ESTIBA`
     });
 
@@ -223,6 +235,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
   if (!upperLine || upperLine.length < 5) return null;
 
   const result: Partial<ShiftEntry> = { group: currentGroup };
+  result.journalType = parseJournalType(upperLine);
 
   // Regla Especial: Conductor 1a -> Grupo II
   if (upperLine.includes('CONDUCTOR 1A')) {
@@ -401,6 +414,9 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
     const specialty = specialtyLine ? specialtyLine.toUpperCase() : undefined;
     const group = specialty?.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
     const shiftLabel = shift;
+    const journalType =
+      segment.map((s) => parseJournalType(s)).find((t) => t === 'NUD' || t === 'TUR') ||
+      parseJournalType(shiftLine);
 
     results.push({
       group,
@@ -410,6 +426,7 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
       specialty,
       company: company ? company.toUpperCase() : undefined,
       ship: ship ? ship.toUpperCase() : undefined,
+      journalType,
       label: specialty ? `${shiftLabel} ${specialty}` : `${shiftLabel} JORNAL ESTIBA`
     });
   }
@@ -455,6 +472,7 @@ export const calculateShiftTotal = (
     label: String(entry.label || 'Jornal Estiba'),
     specialty: entry.specialty ? String(entry.specialty) : null,
     company: entry.company ? String(entry.company) : null,
-    ship: entry.ship ? String(entry.ship) : null
+    ship: entry.ship ? String(entry.ship) : null,
+    journalType: entry.journalType === 'NUD' ? 'NUD' : entry.journalType === 'TUR' ? 'TUR' : undefined
   } as ShiftEntry;
 };
