@@ -529,7 +529,7 @@ const App: React.FC = () => {
   const firstHalfTotals = useMemo(() => calculateTotals(firstHalfEntries), [firstHalfEntries, irpf]);
   const secondHalfTotals = useMemo(() => calculateTotals(secondHalfEntries), [secondHalfEntries, irpf]);
   const sortedHistory = useMemo(() => {
-    const shiftOrder: Record<ShiftType, number> = { '20-02': 0, '02-08': 1, '08-14': 2, '14-20': 3 };
+    const shiftOrder: Record<ShiftType, number> = { '02-08': 0, '08-14': 1, '14-20': 2, '20-02': 3 };
     return [...history].sort((a, b) => {
       const dateDiff = parseLocalYmd(b.date).getTime() - parseLocalYmd(a.date).getTime();
       if (dateDiff !== 0) return dateDiff;
