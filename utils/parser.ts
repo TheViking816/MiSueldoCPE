@@ -2,7 +2,6 @@
 import { Group, DayType, ShiftType, ShiftEntry, SalaryTable, FestiveNightRates } from '../types';
 import { VALENCIA_HOLIDAYS_2026, SALARY_TABLE_2025 } from '../constants';
 
-const SHIFT_REGEX = /DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?/i;
 const COMPANY_REGEX = /(CSP|IBERIAN|TERMINAL|MEDITERRANEAN|MSCTV|APM|VTE)/i;
 
 const parseLocalDate = (dateString: string): Date => {
@@ -30,6 +29,15 @@ const extractProductionAmount = (text: string): number => {
   const last = matches[matches.length - 1].replace(',', '.');
   const amount = Number(last);
   return Number.isNaN(amount) ? 0 : amount;
+};
+
+const parseShiftKey = (line: string): ShiftType | null => {
+  const upper = line.toUpperCase().replace(/\s+/g, ' ').trim();
+  if (upper.includes('02 A 08')) return '02-08';
+  if (upper.includes('08 A 14')) return '08-14';
+  if (upper.includes('14 A 20')) return '14-20';
+  if (upper.includes('20 A 02')) return '20-02';
+  return null;
 };
 
 export const isHoliday = (dateString: string): boolean => {
@@ -118,13 +126,30 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
   const results: Partial<ShiftEntry>[] = [];
 
   const shiftIndexes = lines
-    .map((line, index) => (SHIFT_REGEX.test(line) ? index : -1))
+    .map((line, index) => (parseShiftKey(line) ? index : -1))
     .filter((index) => index >= 0);
 
   if (shiftIndexes.length === 0) {
+    let inferredDay: number | null = null;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
     for (const line of lines) {
+      if (/^\d{1,2}$/.test(line)) {
+        const day = Number(line);
+        if (day >= 1 && day <= 31) inferredDay = day;
+        continue;
+      }
+
       const parsed = parseSingleLine(line, currentGroup);
-      if (parsed) results.push(parsed);
+      if (!parsed) continue;
+
+      if (inferredDay && parsed.shift && !line.match(/\d{1,2}[\/-]\d{1,2}/)) {
+        parsed.date = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(inferredDay).padStart(2, '0')}`;
+      }
+
+      results.push(parsed);
     }
     return results;
   }
@@ -132,15 +157,6 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
-
-  const parseShiftKey = (line: string): ShiftType | null => {
-    const upper = line.toUpperCase();
-    if (upper.includes('02 A 08')) return '02-08';
-    if (upper.includes('08 A 14')) return '08-14';
-    if (upper.includes('14 A 20')) return '14-20';
-    if (upper.includes('20 A 02')) return '20-02';
-    return null;
-  };
 
   const findStandaloneDay = (segment: string[], shiftPos: number): number | null => {
     for (let i = shiftPos - 1; i >= 0; i -= 1) {
