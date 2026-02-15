@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useMemo } from 'react';
 import { Group, ShiftEntry, ShiftType } from './types';
 import { PROFESSIONAL_GROUPS } from './constants';
@@ -74,6 +74,7 @@ const EditModal: React.FC<{
   const [date, setDate] = useState(entry.date);
   const [shift, setShift] = useState<ShiftType>(entry.shift);
   const [prod, setProd] = useState(entry.production.toString());
+  const [extras, setExtras] = useState(String(entry.extras ?? 0));
   const [label, setLabel] = useState(entry.label);
   const [group, setGroup] = useState<Group>(entry.group);
 
@@ -107,12 +108,16 @@ const EditModal: React.FC<{
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Produccion (EUR)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Produccion (€)</label>
               <input type="number" step="0.01" value={prod} onChange={e => setProd(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
             </div>
           </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Extras (€)</label>
+            <input type="number" step="0.01" value={extras} onChange={e => setExtras(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+          </div>
           <button 
-            onClick={() => onSave({ date, shift, production: Number(prod), label, group })}
+            onClick={() => onSave({ date, shift, production: Number(prod), extras: Number(extras), label, group })}
             className="w-full bg-safety text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-safety/20 mt-4 active:scale-95 transition-all"
           >
             <span className="material-symbols-outlined">save</span> GUARDAR CAMBIOS
@@ -161,21 +166,25 @@ const ShiftCard: React.FC<{
           </div>
         </div>
         <div className="text-right">
-          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{grossTotal.toFixed(2)} EUR</p>
-          <p className="text-emerald-500 font-black text-[11px] mt-1">{netWithCurrentIrpf.toFixed(2)} EUR NETO</p>
+          <p className="text-navy-950 dark:text-white font-black text-base leading-none">{grossTotal.toFixed(2)} €</p>
+          <p className="text-emerald-500 font-black text-[11px] mt-1">{netWithCurrentIrpf.toFixed(2)} € NETO</p>
         </div>
       </div>
       
       {showDetails && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-navy-800 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Base</p>
-              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)} EUR</p>
+              <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)} €</p>
             </div>
             <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Produccion</p>
-              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)} EUR</p>
+              <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)} €</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
+              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Extras</p>
+              <p className="text-xs font-bold text-amber-500">{(entry.extras || 0).toFixed(2)} €</p>
             </div>
           </div>
           {entry.ship && (
@@ -224,8 +233,8 @@ const App: React.FC = () => {
   const [entryMode, setEntryMode] = useState<'smart' | 'manual'>('smart');
   const [selectedGroup, setSelectedGroup] = useState<Group>('II');
   const [irpf, setIrpf] = useState<number>(15);
-  const [selectedMonth, setSelectedMonth] = useState<string>(ALL_MONTH_KEY);
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('MONTH');
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>(currentQuincena);
   const [history, setHistory] = useState<ShiftEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -237,6 +246,7 @@ const App: React.FC = () => {
   const [manualShift, setManualShift] = useState<ShiftType>('08-14');
   const [manualGroup, setManualGroup] = useState<Group>('II');
   const [manualProduction, setManualProduction] = useState('0');
+  const [manualExtras, setManualExtras] = useState('0');
   const [manualSpecialty, setManualSpecialty] = useState('Conductor de 1a');
   const [manualTerminal, setManualTerminal] = useState('CSP');
   const [manualShip, setManualShip] = useState('');
@@ -257,7 +267,7 @@ const App: React.FC = () => {
 
       chunk.forEach((docSnap) => {
         const data = docSnap.data() as Partial<ShiftEntry>;
-        const total = Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0)));
+        const total = Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0) + (Number(data.extras) || 0)));
         const net = Number((total * (1 - (nextIrpf / 100))).toFixed(2));
 
         batch.set(doc(db, "jornales_valencia", docSnap.id), {
@@ -310,7 +320,8 @@ const App: React.FC = () => {
         return {
           ...data,
           id: docSnap.id,
-          total: Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0))),
+          extras: Number(data.extras ?? 0),
+          total: Number(data.total ?? ((Number(data.base) || 0) + (Number(data.production) || 0) + (Number(data.extras) || 0))),
           net: Number(data.net ?? 0),
           irpf: Number(data.irpf ?? 0)
         } as ShiftEntry;
@@ -378,7 +389,7 @@ const App: React.FC = () => {
         production: Number(p.production || 0)
       }));
       console.table(productionDebug);
-      alert(`DEBUG produccion detectada:\n${productionDebug.map((r) => `${r.idx}) ${r.date} ${r.shift} -> ${r.production.toFixed(2)} EUR`).join('\n')}`);
+      alert(`DEBUG produccion detectada:\n${productionDebug.map((r) => `${r.idx}) ${r.date} ${r.shift} -> ${r.production.toFixed(2)} €`).join('\n')}`);
 
       const saves = partials.map(p => {
         const fullEntry = calculateShiftTotal(p, irpf, salaryTable, festiveNightRates);
@@ -438,8 +449,10 @@ const App: React.FC = () => {
 
   const handleAddManual = async () => {
     const production = Number(manualProduction.replace(',', '.'));
+    const extras = Number(manualExtras.replace(',', '.'));
     if (!manualDate) return alert("Indica la fecha del jornal.");
     if (Number.isNaN(production)) return alert("La produccion no es valida.");
+    if (Number.isNaN(extras)) return alert("Los extras no son validos.");
 
     const defaultLabel = `${manualShift} ${manualSpecialty.trim() || 'JORNAL MANUAL'}`.trim();
     const partial: Partial<ShiftEntry> = {
@@ -447,6 +460,7 @@ const App: React.FC = () => {
       shift: manualShift,
       group: manualGroup,
       production,
+      extras,
       specialty: manualSpecialty.trim() || undefined,
       company: manualTerminal.trim() || undefined,
       ship: manualShip.trim() || undefined,
@@ -464,6 +478,7 @@ const App: React.FC = () => {
       await addDoc(historyCollection, fullEntry);
       alert("Jornal manual guardado.");
       setManualProduction('0');
+      setManualExtras('0');
       setManualSpecialty('Conductor de 1a');
       setManualShip('');
       setCurrentView('historial');
@@ -518,7 +533,8 @@ const App: React.FC = () => {
   useEffect(() => {
     // Por defecto mantenemos el mes mas reciente con datos.
     if (monthOptions.length > 0 && !monthOptions.includes(selectedMonth)) {
-      setSelectedMonth(monthOptions[0]);
+      const fallbackMonth = monthOptions.find((monthKey) => monthKey !== ALL_MONTH_KEY) || ALL_MONTH_KEY;
+      setSelectedMonth(fallbackMonth);
     }
   }, [monthOptions, selectedMonth]);
 
@@ -620,16 +636,16 @@ const App: React.FC = () => {
                <p className="text-[9px] font-black text-navy-300 uppercase tracking-widest mb-2">{`${periodEntries.length} jornales`}</p>
                <div className="flex items-baseline gap-1">
                  <h2 className="text-4xl font-black text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
-                 <span className="text-xl font-bold text-safety">EUR</span>
+                 <span className="text-xl font-bold text-safety">€</span>
                </div>
                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Bruto Total</p>
-                   <p className="text-base font-bold text-white">{selectedTotals.bruto.toFixed(2)} EUR</p>
+                   <p className="text-base font-bold text-white">{selectedTotals.bruto.toFixed(2)} €</p>
                  </div>
                  <div>
                    <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Retencion IRPF</p>
-                   <p className="text-base font-bold text-red-400">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} EUR</p>
+                   <p className="text-base font-bold text-red-400">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} €</p>
                  </div>
                </div>
 
@@ -637,17 +653,17 @@ const App: React.FC = () => {
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">Mes</p>
                    <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{monthEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{monthTotals.neto.toFixed(2)} EUR</p>
+                   <p className="text-[11px] font-black text-white">{monthTotals.neto.toFixed(2)} €</p>
                  </div>
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">1A Quincena</p>
                    <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{firstHalfEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{firstHalfTotals.neto.toFixed(2)} EUR</p>
+                   <p className="text-[11px] font-black text-white">{firstHalfTotals.neto.toFixed(2)} €</p>
                  </div>
                  <div className="bg-navy-800 rounded-xl p-2">
                    <p className="text-[8px] font-black text-navy-300 uppercase mb-1">2A Quincena</p>
                    <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{secondHalfEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{secondHalfTotals.neto.toFixed(2)} EUR</p>
+                   <p className="text-[11px] font-black text-white">{secondHalfTotals.neto.toFixed(2)} €</p>
                  </div>
                </div>
             </section>
@@ -694,9 +710,13 @@ const App: React.FC = () => {
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Produccion (EUR)</label>
+                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Produccion (€)</label>
                       <input type="number" step="0.01" value={manualProduction} onChange={e => setManualProduction(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
                     </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Extras (€)</label>
+                    <input type="number" step="0.01" value={manualExtras} onChange={e => setManualExtras(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
                   </div>
 
                   <div className="space-y-1">
@@ -828,3 +848,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

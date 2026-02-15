@@ -32,6 +32,7 @@ export interface ShiftEntry {
   shift: ShiftType;
   base: number;
   production: number;
+  extras: number;
   total: number; // Bruto
   net: number;   // Neto tras IRPF
   irpf: number;  // % aplicado

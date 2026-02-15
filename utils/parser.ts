@@ -465,6 +465,7 @@ export const calculateShiftTotal = (
   if (!entry.date || !entry.group || !entry.shift) return null;
   
   const cleanProduction = Number(entry.production) || 0;
+  const cleanExtras = Number(entry.extras) || 0;
   const dayType = getDayType(entry.date);
   
   // Regla especial: jornada 20-02 en festivo depende de si el dia siguiente tambien es festivo.
@@ -477,7 +478,7 @@ export const calculateShiftTotal = (
     base = festiveNightRates?.[key]?.[entry.group] ?? fallback;
   }
 
-  const totalBruto = base + cleanProduction;
+  const totalBruto = base + cleanProduction + cleanExtras;
   const totalNeto = totalBruto * (1 - (irpfPercent / 100));
 
   return {
@@ -488,6 +489,7 @@ export const calculateShiftTotal = (
     shift: entry.shift,
     base: Number(base.toFixed(2)),
     production: Number(cleanProduction.toFixed(2)),
+    extras: Number(cleanExtras.toFixed(2)),
     total: Number(totalBruto.toFixed(2)),
     net: Number(totalNeto.toFixed(2)),
     irpf: Number(irpfPercent),
