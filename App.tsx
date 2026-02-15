@@ -79,8 +79,8 @@ const EditModal: React.FC<{
   const [group, setGroup] = useState<Group>(entry.group);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-navy-900 w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 overflow-y-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-navy-950/55 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-stone-50 dark:bg-navy-900 border border-stone-200 dark:border-navy-800 w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 overflow-y-auto max-h-[90vh]">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-black text-navy-950 dark:text-white uppercase tracking-tight">Editar Jornal</h3>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-navy-950 dark:hover:text-white transition-colors">
@@ -91,11 +91,11 @@ const EditModal: React.FC<{
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Fecha</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Turno</label>
-              <select value={shift} onChange={e => setShift(e.target.value as any)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+              <select value={shift} onChange={e => setShift(e.target.value as any)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                 <option value="02-08">02-08H</option><option value="08-14">08-14H</option><option value="14-20">14-20H</option><option value="20-02">20-02H</option>
               </select>
             </div>
@@ -103,18 +103,18 @@ const EditModal: React.FC<{
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Grupo</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                 {PROFESSIONAL_GROUPS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Produccion (€)</label>
-              <input type="number" step="0.01" value={prod} onChange={e => setProd(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+              <input type="number" step="0.01" value={prod} onChange={e => setProd(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Extras (€)</label>
-            <input type="number" step="0.01" value={extras} onChange={e => setExtras(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+            <input type="number" step="0.01" value={extras} onChange={e => setExtras(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
           </div>
           <button 
             onClick={() => onSave({ date, shift, production: Number(prod), extras: Number(extras), label, group })}
@@ -144,12 +144,12 @@ const ShiftCard: React.FC<{
   
   return (
     <div 
-      className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 p-4 rounded-2xl flex flex-col shadow-sm group hover:border-safety/30 transition-all cursor-pointer active:scale-[0.99]"
+      className="bg-stone-50 dark:bg-navy-900 border border-stone-200 dark:border-navy-800 p-4 rounded-2xl flex flex-col shadow-sm group hover:border-amber-300/60 transition-all cursor-pointer active:scale-[0.99]"
       onClick={() => setShowDetails(!showDetails)}
     >
       <div className="flex items-center justify-between">
         <div className="flex gap-3 items-center">
-          <div className="flex flex-col items-center justify-center bg-slate-100 dark:bg-navy-800 rounded-xl min-w-[44px] h-11 border border-slate-200 dark:border-navy-700">
+          <div className="flex flex-col items-center justify-center bg-stone-100 dark:bg-navy-800 rounded-xl min-w-[44px] h-11 border border-stone-200 dark:border-navy-700">
             <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">{monthNames[dateObj.getMonth()]}</span>
             <span className="text-sm font-black text-navy-950 dark:text-white leading-none">{dateObj.getDate()}</span>
           </div>
@@ -160,7 +160,7 @@ const ShiftCard: React.FC<{
                 <span className="text-[8px] font-black uppercase bg-safety text-white px-1.5 py-0.5 rounded-md leading-none">D</span>
               )}
             </div>
-            <p className="text-[9px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-tighter">
+            <p className="text-[9px] font-bold text-stone-500 dark:text-slate-300 uppercase tracking-tighter">
               G.{entry.group} - {displayDayType} {terminalCode ? `- ${terminalCode}` : ''}
             </p>
           </div>
@@ -172,23 +172,23 @@ const ShiftCard: React.FC<{
       </div>
       
       {showDetails && (
-        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-navy-800 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="mt-4 pt-4 border-t border-stone-200 dark:border-navy-800 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
+            <div className="bg-stone-100 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Base</p>
               <p className="text-xs font-bold text-navy-950 dark:text-white">{(entry.base || 0).toFixed(2)} €</p>
             </div>
-            <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
+            <div className="bg-stone-100 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Produccion</p>
               <p className="text-xs font-bold text-safety">{(entry.production || 0).toFixed(2)} €</p>
             </div>
-            <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
+            <div className="bg-stone-100 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Extras</p>
               <p className="text-xs font-bold text-amber-500">{(entry.extras || 0).toFixed(2)} €</p>
             </div>
           </div>
           {entry.ship && (
-            <div className="bg-slate-50 dark:bg-navy-950 p-2 rounded-xl">
+            <div className="bg-stone-100 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Buque / Terminal</p>
               <p className="text-xs font-bold text-navy-950 dark:text-white truncate">{entry.ship} en {terminalCode || '-'}</p>
             </div>
@@ -572,106 +572,107 @@ const App: React.FC = () => {
       : '2A QUINCENA';
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-navy-950 flex flex-col relative transition-colors font-sans overflow-x-hidden">
+    <div className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-stone-100 via-orange-50 to-amber-50 dark:from-navy-950 dark:via-navy-950 dark:to-navy-950 flex flex-col relative transition-colors font-sans overflow-x-hidden">
       
       {editingEntry && <EditModal entry={editingEntry} onClose={() => setEditingEntry(null)} onSave={handleUpdate} />}
 
-      <header className="sticky top-0 z-50 bg-white dark:bg-navy-950/85 ios-blur border-b border-slate-200 dark:border-navy-900 px-5 py-4 flex justify-between items-center">
+      <header className="sticky top-0 z-50 bg-stone-50/90 dark:bg-navy-950/85 ios-blur border-b border-stone-200 dark:border-navy-900 px-5 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-safety/20 bg-white p-1">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg shadow-amber-500/20 bg-stone-100 border border-stone-200">
             <img src={appLogo} alt="MiSueldoCPE" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-navy-950 dark:text-white leading-none">MiSueldoCPE</h1>
-            <p className="text-[9px] font-black text-safety uppercase tracking-widest mt-0.5">Valencia 2025</p>
+            <h1 className="text-2xl font-black text-navy-950 dark:text-white leading-none tracking-tight">MiSueldoCPE</h1>
+            <p className="text-[11px] font-black text-amber-600 dark:text-safety uppercase tracking-widest mt-1">Valencia 2025</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{isLoading ? 'Cargando' : 'Nube OK'}</span>
-        </div>
+        <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} aria-label={isLoading ? 'Cargando' : 'Sincronizado'} />
       </header>
 
       <main className="flex-1 px-5 py-6 overflow-y-auto pb-32 custom-scrollbar">
         {currentView === 'resumen' && (
           <div className="space-y-6">
-            <section className="bg-navy-950 dark:bg-navy-900 rounded-[2rem] p-7 shadow-2xl border border-navy-800">
-               <div className="flex items-center justify-between gap-3 mb-4">
-                 <label className="text-[9px] font-bold text-navy-400 uppercase tracking-widest opacity-70">Periodo resumen</label>
-                 <select
-                   value={selectedMonth}
-                   onChange={(e) => setSelectedMonth(e.target.value)}
-                   className="bg-navy-800 text-white text-[10px] font-black rounded-lg px-3 py-2 border border-navy-700"
-                 >
-                   {monthOptions.map((monthKey) => (
-                     <option key={monthKey} value={monthKey}>{formatMonthLabel(monthKey)}</option>
-                   ))}
-                 </select>
-               </div>
+            <section className="rounded-[2rem] p-5 shadow-xl border border-amber-200/70 dark:border-navy-800 bg-gradient-to-br from-amber-100 via-orange-50 to-rose-100 dark:from-navy-900 dark:via-navy-900 dark:to-navy-950">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[9px] font-black text-amber-700 dark:text-navy-300 uppercase tracking-[0.18em]">Periodo resumen</p>
+                  <p className="text-[11px] font-bold text-navy-700 dark:text-slate-300 mt-1">{selectedPeriodLabel}</p>
+                </div>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-stone-50/90 dark:bg-navy-800 text-[10px] text-navy-900 dark:text-white font-black rounded-xl px-3 py-2 border border-amber-200 dark:border-navy-700"
+                >
+                  {monthOptions.map((monthKey) => (
+                    <option key={monthKey} value={monthKey}>{formatMonthLabel(monthKey)}</option>
+                  ))}
+                </select>
+              </div>
 
-               <div className="grid grid-cols-3 gap-2 mb-4">
-                 <button
-                   onClick={() => setSelectedPeriod('Q1')}
-                   disabled={selectedMonth === ALL_MONTH_KEY}
-                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
-                 >
-                   1A Q
-                 </button>
-                 <button
-                   onClick={() => setSelectedPeriod('Q2')}
-                   disabled={selectedMonth === ALL_MONTH_KEY}
-                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
-                 >
-                   2A Q
-                 </button>
-                 <button
-                   onClick={() => setSelectedPeriod('MONTH')}
-                   className={`py-2 rounded-lg text-[9px] font-black transition-all ${selectedPeriod === 'MONTH' ? 'bg-safety text-white' : 'bg-navy-800 text-navy-300'}`}
-                 >
-                   MES
-                 </button>
-               </div>
+              <div className="grid grid-cols-3 gap-2 mb-5 p-1.5 rounded-2xl bg-stone-50/70 dark:bg-navy-800/70 border border-amber-100 dark:border-navy-700">
+                <button
+                  onClick={() => setSelectedPeriod('Q1')}
+                  disabled={selectedMonth === ALL_MONTH_KEY}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                >
+                  1A Q
+                </button>
+                <button
+                  onClick={() => setSelectedPeriod('Q2')}
+                  disabled={selectedMonth === ALL_MONTH_KEY}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                >
+                  2A Q
+                </button>
+                <button
+                  onClick={() => setSelectedPeriod('MONTH')}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'MONTH' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                >
+                  MES
+                </button>
+              </div>
 
-               <p className="text-[9px] font-bold text-navy-400 uppercase tracking-widest mb-1 opacity-70">{`Balance Neto ${selectedPeriodLabel} - ${formatMonthLabel(selectedMonth)}`}</p>
-               <p className="text-[9px] font-black text-navy-300 uppercase tracking-widest mb-2">{`${periodEntries.length} jornales`}</p>
-               <div className="flex items-baseline gap-1">
-                 <h2 className="text-4xl font-black text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
-                 <span className="text-xl font-bold text-safety">€</span>
-               </div>
-               <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/5">
-                 <div>
-                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Bruto Total</p>
-                   <p className="text-base font-bold text-white">{selectedTotals.bruto.toFixed(2)} €</p>
-                 </div>
-                 <div>
-                   <p className="text-[8px] font-bold text-navy-400 uppercase mb-0.5">Retencion IRPF</p>
-                   <p className="text-base font-bold text-red-400">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} €</p>
-                 </div>
-               </div>
+              <p className="text-[9px] font-bold text-amber-700 dark:text-navy-300 uppercase tracking-widest mb-1">{`Balance Neto - ${formatMonthLabel(selectedMonth)}`}</p>
+              <p className="text-[10px] font-black text-navy-700 dark:text-navy-300 uppercase tracking-widest mb-2">{`${periodEntries.length} jornales`}</p>
+              <div className="flex items-end gap-1">
+                <h2 className="text-4xl font-black text-navy-950 dark:text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
+                <span className="text-2xl leading-none pb-1 font-black text-orange-600 dark:text-safety">€</span>
+              </div>
 
-               <div className="grid grid-cols-3 gap-2 mt-5 pt-5 border-t border-white/5">
-                 <div className="bg-navy-800 rounded-xl p-2">
-                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">Mes</p>
-                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{monthEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{monthTotals.neto.toFixed(2)} €</p>
-                 </div>
-                 <div className="bg-navy-800 rounded-xl p-2">
-                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">1A Quincena</p>
-                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{firstHalfEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{firstHalfTotals.neto.toFixed(2)} €</p>
-                 </div>
-                 <div className="bg-navy-800 rounded-xl p-2">
-                   <p className="text-[8px] font-black text-navy-300 uppercase mb-1">2A Quincena</p>
-                   <p className="text-[8px] font-black text-navy-400 uppercase mb-1">{secondHalfEntries.length} jornales</p>
-                   <p className="text-[11px] font-black text-white">{secondHalfTotals.neto.toFixed(2)} €</p>
-                 </div>
-               </div>
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                <div className="rounded-2xl p-3 bg-stone-50/80 dark:bg-navy-900 border border-amber-100 dark:border-navy-700">
+                  <p className="text-[8px] font-bold text-amber-700 dark:text-navy-300 uppercase mb-1">Bruto Total</p>
+                  <p className="text-base font-black text-navy-900 dark:text-white">{selectedTotals.bruto.toFixed(2)} €</p>
+                </div>
+                <div className="rounded-2xl p-3 bg-stone-50/80 dark:bg-navy-900 border border-amber-100 dark:border-navy-700">
+                  <p className="text-[8px] font-bold text-amber-700 dark:text-navy-300 uppercase mb-1">Retencion IRPF</p>
+                  <p className="text-base font-black text-rose-500">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} €</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
+                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">Mes</p>
+                  <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{monthEntries.length} jornales</p>
+                  <p className="text-[11px] font-black text-navy-900 dark:text-white">{monthTotals.neto.toFixed(2)} €</p>
+                </div>
+                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
+                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">1A Quincena</p>
+                  <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{firstHalfEntries.length} jornales</p>
+                  <p className="text-[11px] font-black text-navy-900 dark:text-white">{firstHalfTotals.neto.toFixed(2)} €</p>
+                </div>
+                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
+                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">2A Quincena</p>
+                  <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{secondHalfEntries.length} jornales</p>
+                  <p className="text-[11px] font-black text-navy-900 dark:text-white">{secondHalfTotals.neto.toFixed(2)} €</p>
+                </div>
+              </div>
             </section>
 
-            <section className="bg-white dark:bg-navy-900 rounded-3xl p-5 border dark:border-navy-800 shadow-sm space-y-4">
-              <div className="flex bg-slate-100 dark:bg-navy-800 rounded-xl p-1">
-                <button onClick={() => setEntryMode('smart')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'smart' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>CARGA INTELIGENTE</button>
-                <button onClick={() => setEntryMode('manual')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'manual' ? 'bg-white dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>MANUAL</button>
+            <section className="bg-stone-50 dark:bg-navy-900 rounded-3xl p-5 border border-stone-200 dark:border-navy-800 shadow-sm space-y-4">
+              <div className="flex bg-stone-100 dark:bg-navy-800 rounded-xl p-1">
+                <button onClick={() => setEntryMode('smart')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'smart' ? 'bg-stone-50 dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-stone-500 dark:text-slate-300'}`}>CARGA INTELIGENTE</button>
+                <button onClick={() => setEntryMode('manual')} className={`flex-1 py-2 text-[9px] font-black rounded-lg ${entryMode === 'manual' ? 'bg-stone-50 dark:bg-navy-700 text-navy-950 dark:text-white shadow-sm' : 'text-stone-500 dark:text-slate-300'}`}>MANUAL</button>
               </div>
 
               {entryMode === 'smart' ? (
@@ -679,7 +680,7 @@ const App: React.FC = () => {
                   <textarea 
                     value={inputText} 
                     onChange={e => setInputText(e.target.value)} 
-                    className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-2xl p-4 text-xs h-40 resize-none placeholder:text-slate-400 focus:ring-1 ring-safety/30 font-mono" 
+                    className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-2xl p-4 text-xs h-40 resize-none placeholder:text-slate-400 focus:ring-1 ring-safety/30 font-mono" 
                     placeholder="Pega aqui una o varias lineas del portal..." 
                   />
                   <p className="text-[9px] text-slate-400 px-2 leading-relaxed">
@@ -691,12 +692,12 @@ const App: React.FC = () => {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Fecha</label>
-                      <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+                      <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Fecha</label>
+                      <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Turno</label>
-                      <select value={manualShift} onChange={e => setManualShift(e.target.value as ShiftType)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                      <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Turno</label>
+                      <select value={manualShift} onChange={e => setManualShift(e.target.value as ShiftType)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                         <option value="02-08">02-08H</option><option value="08-14">08-14H</option><option value="14-20">14-20H</option><option value="20-02">20-02H</option>
                       </select>
                     </div>
@@ -704,24 +705,24 @@ const App: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Grupo</label>
-                      <select value={manualGroup} onChange={e => setManualGroup(e.target.value as Group)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                      <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Grupo</label>
+                      <select value={manualGroup} onChange={e => setManualGroup(e.target.value as Group)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                         {PROFESSIONAL_GROUPS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Produccion (€)</label>
-                      <input type="number" step="0.01" value={manualProduction} onChange={e => setManualProduction(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+                      <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Produccion (€)</label>
+                      <input type="number" step="0.01" value={manualProduction} onChange={e => setManualProduction(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Extras (€)</label>
-                    <input type="number" step="0.01" value={manualExtras} onChange={e => setManualExtras(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
+                    <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Extras (€)</label>
+                    <input type="number" step="0.01" value={manualExtras} onChange={e => setManualExtras(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20" />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Especialidad</label>
-                    <select value={manualSpecialty} onChange={e => setManualSpecialty(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                    <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Especialidad</label>
+                    <select value={manualSpecialty} onChange={e => setManualSpecialty(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                       <option value="Conductor de 1a">Conductor de 1a</option>
                       <option value="Conductor de 2a">Conductor de 2a</option>
                       <option value="Especialista">Especialista</option>
@@ -729,8 +730,8 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Terminal</label>
-                    <select value={manualTerminal} onChange={e => setManualTerminal(e.target.value)} className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
+                    <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Terminal</label>
+                    <select value={manualTerminal} onChange={e => setManualTerminal(e.target.value)} className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-safety/20">
                       <option value="CSP">CSP</option>
                       <option value="MSC">MSC</option>
                       <option value="APM">APM</option>
@@ -739,8 +740,8 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase ml-2">Buque</label>
-                    <input type="text" value={manualShip} onChange={e => setManualShip(e.target.value)} placeholder="Nombre del buque" className="w-full bg-slate-50 dark:bg-navy-950 border-none rounded-xl p-3 text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-safety/20" />
+                    <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase ml-2">Buque</label>
+                    <input type="text" value={manualShip} onChange={e => setManualShip(e.target.value)} placeholder="Nombre del buque" className="w-full bg-stone-100 dark:bg-navy-950 border-none rounded-xl p-3 text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-safety/20" />
                   </div>
 
                 </div>
@@ -749,7 +750,7 @@ const App: React.FC = () => {
               <button 
                 onClick={entryMode === 'smart' ? handleAddSmart : handleAddManual}
                 disabled={isSaving}
-                className="w-full bg-navy-950 dark:bg-safety text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl shadow-safety/10 disabled:opacity-50"
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 dark:bg-safety text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl shadow-amber-500/25 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined">{isSaving ? 'sync' : 'add_task'}</span>
                 {isSaving ? 'GUARDANDO...' : 'GUARDAR JORNALES'}
@@ -776,12 +777,12 @@ const App: React.FC = () => {
         {currentView === 'perfil' && (
           <div className="space-y-6">
             <ViewTitle title="Ajustes" subtitle="Configuracion de Cuenta" />
-            <div className="bg-white dark:bg-navy-900 rounded-3xl p-6 border dark:border-navy-800 space-y-8 shadow-sm">
+            <div className="bg-stone-50 dark:bg-navy-900 rounded-3xl p-6 border border-stone-200 dark:border-navy-800 space-y-8 shadow-sm">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">Tema</label>
-                <div className="flex bg-slate-100 dark:bg-navy-800 rounded-xl p-1">
-                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'light' ? 'bg-white text-navy-950 shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>CLARO</button>
-                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'dark' ? 'bg-navy-700 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>OSCURO</button>
+                <label className="text-[10px] font-black text-stone-500 dark:text-slate-300 uppercase tracking-widest ml-1">Tema</label>
+                <div className="flex bg-stone-100 dark:bg-navy-800 rounded-xl p-1">
+                  <button onClick={() => setTheme('light')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'light' ? 'bg-stone-50 text-navy-950 shadow-sm' : 'text-stone-500 dark:text-slate-300'}`}>CLARO</button>
+                  <button onClick={() => setTheme('dark')} className={`flex-1 py-2 text-[10px] font-black rounded-lg ${theme === 'dark' ? 'bg-navy-700 text-white shadow-sm' : 'text-stone-500 dark:text-slate-300'}`}>OSCURO</button>
                 </div>
               </div>
 
@@ -792,7 +793,7 @@ const App: React.FC = () => {
                     <button 
                       key={g} 
                       onClick={() => setSelectedGroup(g)}
-                      className={`py-3 rounded-xl font-black text-sm transition-all ${selectedGroup === g ? 'bg-safety text-white shadow-lg shadow-safety/20' : 'bg-slate-100 dark:bg-navy-800 text-slate-400'}`}
+                      className={`py-3 rounded-xl font-black text-sm transition-all ${selectedGroup === g ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20' : 'bg-stone-100 dark:bg-navy-800 text-slate-400'}`}
                     >
                       {g}
                     </button>
@@ -819,7 +820,7 @@ const App: React.FC = () => {
                 <button 
                   onClick={handleSaveSettings}
                   disabled={isSettingsSaving}
-                  className="w-full bg-navy-950 dark:bg-navy-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-navy-950/20 disabled:opacity-50"
+                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 dark:bg-navy-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-amber-500/25 disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined">{isSettingsSaving ? 'sync' : 'cloud_upload'}</span>
                   {isSettingsSaving ? 'SINCRONIZANDO...' : 'GUARDAR PREFERENCIAS'}
@@ -831,13 +832,13 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-navy-950/95 ios-blur border-t border-slate-200 dark:border-navy-900 px-10 py-4 pb-10 flex justify-between items-center z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-stone-50/95 dark:bg-navy-950/95 ios-blur border-t border-stone-200 dark:border-navy-900 px-10 py-4 pb-10 flex justify-between items-center z-50">
         {[
           { id: 'resumen', icon: 'dashboard', label: 'Inicio' },
           { id: 'historial', icon: 'history', label: 'Registros' },
           { id: 'perfil', icon: 'settings', label: 'Ajustes' }
         ].map(item => (
-          <button key={item.id} onClick={() => setCurrentView(item.id as any)} className={`flex flex-col items-center gap-0.5 transition-all ${currentView === item.id ? 'text-safety scale-110' : 'text-slate-500 dark:text-slate-300'}`}>
+          <button key={item.id} onClick={() => setCurrentView(item.id as any)} className={`flex flex-col items-center gap-0.5 transition-all ${currentView === item.id ? 'text-safety scale-110' : 'text-stone-500 dark:text-slate-300'}`}>
             <span className="material-symbols-outlined text-[30px] font-light">{item.icon}</span>
             <span className="text-[11px] font-black uppercase tracking-tight">{item.label}</span>
           </button>
@@ -848,4 +849,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
 
