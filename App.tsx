@@ -571,6 +571,17 @@ const App: React.FC = () => {
       ? '1A QUINCENA'
       : '2A QUINCENA';
 
+  const summaryClasses = {
+    section: 'rounded-[2rem] p-5 shadow-xl border border-emerald-200/70 dark:border-navy-800 bg-gradient-to-br from-stone-100 via-emerald-50 to-lime-50 dark:from-navy-900 dark:via-navy-900 dark:to-navy-950',
+    eyebrow: 'text-[9px] font-black text-emerald-700 dark:text-navy-300 uppercase tracking-[0.18em]',
+    chip: 'appearance-none bg-stone-50/90 dark:bg-navy-800 text-[10px] text-navy-900 dark:text-white font-black rounded-xl pl-3 pr-8 py-2 border border-emerald-200 dark:border-navy-700',
+    tabsWrap: 'grid grid-cols-3 gap-2 mb-5 p-1.5 rounded-2xl bg-stone-50/70 dark:bg-navy-800/70 border border-emerald-100 dark:border-navy-700',
+    tabIdle: 'text-emerald-900 dark:text-navy-300',
+    tabActive: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25',
+    card: 'rounded-2xl p-3 bg-stone-50/80 dark:bg-navy-900 border border-emerald-100 dark:border-navy-700',
+    miniCard: 'rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-emerald-100 dark:border-navy-700'
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-stone-100 via-orange-50 to-amber-50 dark:from-navy-950 dark:via-navy-950 dark:to-navy-950 flex flex-col relative transition-colors font-sans overflow-x-hidden">
       
@@ -592,77 +603,80 @@ const App: React.FC = () => {
       <main className="flex-1 px-5 py-6 overflow-y-auto pb-32 custom-scrollbar">
         {currentView === 'resumen' && (
           <div className="space-y-6">
-            <section className="rounded-[2rem] p-5 shadow-xl border border-amber-200/70 dark:border-navy-800 bg-gradient-to-br from-amber-100 via-orange-50 to-rose-100 dark:from-navy-900 dark:via-navy-900 dark:to-navy-950">
+            <section className={summaryClasses.section}>
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <p className="text-[9px] font-black text-amber-700 dark:text-navy-300 uppercase tracking-[0.18em]">Periodo resumen</p>
+                  <p className={summaryClasses.eyebrow}>Periodo resumen</p>
                   <p className="text-[11px] font-bold text-navy-700 dark:text-slate-300 mt-1">{selectedPeriodLabel}</p>
                 </div>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-stone-50/90 dark:bg-navy-800 text-[10px] text-navy-900 dark:text-white font-black rounded-xl px-3 py-2 border border-amber-200 dark:border-navy-700"
-                >
-                  {monthOptions.map((monthKey) => (
-                    <option key={monthKey} value={monthKey}>{formatMonthLabel(monthKey)}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className={summaryClasses.chip}
+                  >
+                    {monthOptions.map((monthKey) => (
+                      <option key={monthKey} value={monthKey}>{formatMonthLabel(monthKey)}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-700 dark:text-navy-300 text-xs">▼</span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 mb-5 p-1.5 rounded-2xl bg-stone-50/70 dark:bg-navy-800/70 border border-amber-100 dark:border-navy-700">
+              <div className={summaryClasses.tabsWrap}>
                 <button
                   onClick={() => setSelectedPeriod('Q1')}
                   disabled={selectedMonth === ALL_MONTH_KEY}
-                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q1' ? summaryClasses.tabActive : summaryClasses.tabIdle}`}
                 >
                   1A Q
                 </button>
                 <button
                   onClick={() => setSelectedPeriod('Q2')}
                   disabled={selectedMonth === ALL_MONTH_KEY}
-                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'Q2' ? summaryClasses.tabActive : summaryClasses.tabIdle}`}
                 >
                   2A Q
                 </button>
                 <button
                   onClick={() => setSelectedPeriod('MONTH')}
-                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'MONTH' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25' : 'text-amber-900 dark:text-navy-300'}`}
+                  className={`py-2 rounded-xl text-[9px] font-black transition-all ${selectedPeriod === 'MONTH' ? summaryClasses.tabActive : summaryClasses.tabIdle}`}
                 >
                   MES
                 </button>
               </div>
 
-              <p className="text-[9px] font-bold text-amber-700 dark:text-navy-300 uppercase tracking-widest mb-1">{`Balance Neto - ${formatMonthLabel(selectedMonth)}`}</p>
+              <p className="text-[9px] font-bold text-emerald-700 dark:text-navy-300 uppercase tracking-widest mb-1">{`Balance Neto - ${formatMonthLabel(selectedMonth)}`}</p>
               <p className="text-[10px] font-black text-navy-700 dark:text-navy-300 uppercase tracking-widest mb-2">{`${periodEntries.length} jornales`}</p>
               <div className="flex items-end gap-1">
                 <h2 className="text-4xl font-black text-navy-950 dark:text-white tracking-tighter">{selectedTotals.neto.toFixed(2)}</h2>
-                <span className="text-2xl leading-none pb-1 font-black text-orange-600 dark:text-safety">€</span>
+                <span className="text-2xl leading-none pb-1 font-black text-emerald-600 dark:text-safety">€</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-5">
-                <div className="rounded-2xl p-3 bg-stone-50/80 dark:bg-navy-900 border border-amber-100 dark:border-navy-700">
-                  <p className="text-[8px] font-bold text-amber-700 dark:text-navy-300 uppercase mb-1">Bruto Total</p>
+                <div className={summaryClasses.card}>
+                  <p className="text-[8px] font-bold text-emerald-700 dark:text-navy-300 uppercase mb-1">Bruto Total</p>
                   <p className="text-base font-black text-navy-900 dark:text-white">{selectedTotals.bruto.toFixed(2)} €</p>
                 </div>
-                <div className="rounded-2xl p-3 bg-stone-50/80 dark:bg-navy-900 border border-amber-100 dark:border-navy-700">
-                  <p className="text-[8px] font-bold text-amber-700 dark:text-navy-300 uppercase mb-1">Retencion IRPF</p>
+                <div className={summaryClasses.card}>
+                  <p className="text-[8px] font-bold text-emerald-700 dark:text-navy-300 uppercase mb-1">Retencion IRPF</p>
                   <p className="text-base font-black text-rose-500">{(selectedTotals.bruto - selectedTotals.neto).toFixed(2)} €</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 mt-4">
-                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
-                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">Mes</p>
+                <div className={summaryClasses.miniCard}>
+                  <p className="text-[8px] font-black text-emerald-700 dark:text-navy-300 uppercase mb-1">Mes</p>
                   <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{monthEntries.length} jornales</p>
                   <p className="text-[11px] font-black text-navy-900 dark:text-white">{monthTotals.neto.toFixed(2)} €</p>
                 </div>
-                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
-                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">1A Quincena</p>
+                <div className={summaryClasses.miniCard}>
+                  <p className="text-[8px] font-black text-emerald-700 dark:text-navy-300 uppercase mb-1">1A Quincena</p>
                   <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{firstHalfEntries.length} jornales</p>
                   <p className="text-[11px] font-black text-navy-900 dark:text-white">{firstHalfTotals.neto.toFixed(2)} €</p>
                 </div>
-                <div className="rounded-xl p-2 bg-stone-50/75 dark:bg-navy-800 border border-amber-100 dark:border-navy-700">
-                  <p className="text-[8px] font-black text-amber-700 dark:text-navy-300 uppercase mb-1">2A Quincena</p>
+                <div className={summaryClasses.miniCard}>
+                  <p className="text-[8px] font-black text-emerald-700 dark:text-navy-300 uppercase mb-1">2A Quincena</p>
                   <p className="text-[8px] font-black text-stone-500 dark:text-navy-400 uppercase mb-1">{secondHalfEntries.length} jornales</p>
                   <p className="text-[11px] font-black text-navy-900 dark:text-white">{secondHalfTotals.neto.toFixed(2)} €</p>
                 </div>
