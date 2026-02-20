@@ -53,6 +53,16 @@ const parseJournalType = (line: string): JournalType | undefined => {
   return undefined;
 };
 
+const normalizeCompanyCode = (company?: string): string | undefined => {
+  const cleaned = String(company || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!cleaned) return undefined;
+  if (cleaned.includes('CSP')) return 'CSP';
+  if (cleaned.includes('MEDITERRANEAN') || cleaned.includes('MSCTV') || cleaned.includes('MSC')) return 'MSC';
+  if (cleaned.includes('APM')) return 'APM';
+  if (cleaned.includes('VTE')) return 'VTE';
+  return cleaned;
+};
+
 const parseShiftKey = (line: string): ShiftType | null => {
   const upper = line.toUpperCase().replace(/\s+/g, ' ').trim();
   if (/\b0?2\D+0?8\b/.test(upper)) return '02-08';
@@ -82,7 +92,7 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
   const year = header?.year ?? now.getFullYear();
 
   const lines = text.split(/\n/).map((line) => line.trim()).filter(Boolean);
-  const rowRegex = /^(\d{1,3})\s+(\d{3,6})\s+(\d{1,2})\s+([A-Z]{3,4})\s+DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?\s+(.+?)\s+(CSP IBERIAN VALENCIA TERMINAL|MEDITERRANEAN SHIPPING C\.\s*TV|APM|VTE)\s+(.+?)\s+CONT\..*?(?:\s+(\d+[.,]\d+)\s*€?)?$/i;
+  const rowRegex = /^(\d{1,3})\s+(\d{3,6})\s+(\d{1,2})\s+([A-Z]{3,4})\s+DE\s*(02|08|14|20)\s*A\s*(08|14|20|02)\s*H\.?\s+(.+?)\s+(CSP IBERIAN VALENCIA TERMINAL|MEDITERRANEAN SHIPPING C\.\s*TV|APM(?: TERMINALS VALENCIA,? S\.?A\.?)?|VTE)\s+(.+?)\s+CONT\..*?(?:\s+(\d+[.,]\d+)\s*€?)?$/i;
   const out: Partial<ShiftEntry>[] = [];
 
   for (const line of lines) {
@@ -96,7 +106,7 @@ const parseCompactTableRows = (text: string, currentGroup: Group): Partial<Shift
     if (!shift) continue;
 
     const specialty = m[7].trim().toUpperCase();
-    const company = m[8].replace(/\s+/g, ' ').trim().toUpperCase();
+    const company = normalizeCompanyCode(m[8]);
     const ship = m[9].trim().toUpperCase();
     const group = specialty.includes('CONDUCTOR 1A') ? 'II' : currentGroup;
     const journalType = parseJournalType(m[4]);
@@ -209,7 +219,7 @@ const parsePortalTableText = (text: string, currentGroup: Group): Partial<ShiftE
       date,
       production,
       specialty: specialty || undefined,
-      company: companyRaw ? companyRaw.toUpperCase() : undefined,
+      company: normalizeCompanyCode(companyRaw),
       ship: shipRaw ? shipRaw.toUpperCase() : undefined,
       journalType,
       label: specialty ? `${shift} ${specialty}` : `${shift} JORNAL ESTIBA`
@@ -296,7 +306,7 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
     const specialty = match[1].trim();
     const company = match[2].trim();
     result.specialty = specialty;
-    result.company = company;
+    result.company = normalizeCompanyCode(company);
     
     // El buque suele venir despus de la empresa en el pegado de tabla
     const remaining = upperLine.split(company)[1] || '';
@@ -446,7 +456,7 @@ export const parseBulkText = (text: string, currentGroup: Group): Partial<ShiftE
       date,
       production,
       specialty,
-      company: company ? company.toUpperCase() : undefined,
+      company: normalizeCompanyCode(company),
       ship: ship ? ship.toUpperCase() : undefined,
       journalType,
       label: specialty ? `${shiftLabel} ${specialty}` : `${shiftLabel} JORNAL ESTIBA`

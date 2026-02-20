@@ -284,6 +284,50 @@ const App: React.FC = () => {
 
     return updatedCount;
   };
+
+  const migrateHistoryCompanyCodes = async (): Promise<number> => {
+    const migrationKey = 'estiba_company_migration_v1_done';
+    if (localStorage.getItem(migrationKey) === '1') return 0;
+
+    const snapshot = await getDocs(historyCollection);
+    if (snapshot.empty) {
+      localStorage.setItem(migrationKey, '1');
+      return 0;
+    }
+
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    let updatedCount = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + chunkSize);
+      let chunkUpdates = 0;
+
+      chunk.forEach((docSnap) => {
+        const data = docSnap.data() as Partial<ShiftEntry>;
+        const rawCompany = String(data.company || '').toUpperCase().trim();
+        const normalizedCompany = normalizeTerminal(rawCompany);
+
+        if (!normalizedCompany || rawCompany === normalizedCompany) return;
+
+        batch.set(doc(db, "jornales_valencia", docSnap.id), {
+          company: normalizedCompany,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        updatedCount += 1;
+        chunkUpdates += 1;
+      });
+
+      if (chunkUpdates > 0) {
+        await batch.commit();
+      }
+    }
+
+    localStorage.setItem(migrationKey, '1');
+    return updatedCount;
+  };
   
   // Cargar Ajustes y Jornales
   useEffect(() => {
@@ -310,6 +354,17 @@ const App: React.FC = () => {
         if (typeof data.group === 'string') setSelectedGroup(data.group as Group);
       }
     });
+
+    // 2.1 Migracion one-shot de empresas historicas (texto largo -> codigo terminal)
+    migrateHistoryCompanyCodes()
+      .then((updated) => {
+        if (updated > 0) {
+          alert(`Migracion completada: ${updated} registros normalizados (CSP/MSC/APM/VTE).`);
+        }
+      })
+      .catch((err: any) => {
+        console.error("Error migrando empresas historicas:", err?.message || err);
+      });
 
     // 3. Sincronizar Historial
     console.log("Sincronizando con MiSueldoCPE...");
