@@ -60,6 +60,20 @@ const normalizeTerminal = (company?: string | null): string => {
   return '';
 };
 
+const normalizeShipForDisplay = (ship?: string | null, company?: string | null): string => {
+  const cleanedShip = String(ship || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!cleanedShip) return '';
+
+  const terminalCode = normalizeTerminal(company);
+  let normalized = cleanedShip.replace(/\s+EN\s+(CSP|MSC|APM|VTE)\s*$/i, '').trim();
+
+  if (terminalCode === 'APM') {
+    normalized = normalized.replace(/^(APM\s+)?TERMINALS?\s+VALENCIA,?\s*S\.?A\.?\s*/i, '').trim();
+  }
+
+  return normalized;
+};
+
 const parseLocalYmd = (value: string): Date => {
   const [y, m, d] = String(value).split('-').map(Number);
   if (!y || !m || !d) return new Date(value);
@@ -139,6 +153,7 @@ const ShiftCard: React.FC<{
   const displayDayType = getDayType(entry.date);
   const monthNames = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
   const terminalCode = normalizeTerminal(entry.company);
+  const shipDisplay = normalizeShipForDisplay(entry.ship, entry.company);
   const grossTotal = Number(entry.total || 0);
   const netWithCurrentIrpf = Number((grossTotal * (1 - currentIrpf / 100)).toFixed(2));
   
@@ -187,10 +202,10 @@ const ShiftCard: React.FC<{
               <p className="text-xs font-bold text-amber-500">{(entry.extras || 0).toFixed(2)} €</p>
             </div>
           </div>
-          {entry.ship && (
+          {shipDisplay && (
             <div className="bg-stone-100 dark:bg-navy-950 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Buque / Terminal</p>
-              <p className="text-xs font-bold text-navy-950 dark:text-white truncate">{entry.ship} en {terminalCode || '-'}</p>
+              <p className="text-xs font-bold text-navy-950 dark:text-white truncate">{shipDisplay} en {terminalCode || '-'}</p>
             </div>
           )}
           <div className="flex justify-between items-center px-1 pt-2">
@@ -286,7 +301,7 @@ const App: React.FC = () => {
   };
 
   const migrateHistoryCompanyCodes = async (): Promise<number> => {
-    const migrationKey = 'estiba_company_migration_v1_done';
+    const migrationKey = 'estiba_company_migration_v2_done';
     if (localStorage.getItem(migrationKey) === '1') return 0;
 
     const snapshot = await getDocs(historyCollection);
@@ -307,13 +322,23 @@ const App: React.FC = () => {
       chunk.forEach((docSnap) => {
         const data = docSnap.data() as Partial<ShiftEntry>;
         const rawCompany = String(data.company || '').toUpperCase().trim();
+        const rawShip = String(data.ship || '').toUpperCase().trim();
         const normalizedCompany = normalizeTerminal(rawCompany);
+        const effectiveCompany = normalizedCompany || rawCompany;
+        const normalizedShip = normalizeShipForDisplay(rawShip, effectiveCompany);
 
-        if (!normalizedCompany || rawCompany === normalizedCompany) return;
+        const companyNeedsUpdate = Boolean(normalizedCompany) && rawCompany !== normalizedCompany;
+        const shipNeedsUpdate = Boolean(rawShip) && normalizedShip && rawShip !== normalizedShip;
+        if (!companyNeedsUpdate && !shipNeedsUpdate) return;
+
+        const updatePayload: Partial<ShiftEntry> & { updatedAt: string } = {
+          updatedAt: new Date().toISOString()
+        };
+        if (companyNeedsUpdate) updatePayload.company = normalizedCompany;
+        if (shipNeedsUpdate) updatePayload.ship = normalizedShip;
 
         batch.set(doc(db, "jornales_valencia", docSnap.id), {
-          company: normalizedCompany,
-          updatedAt: new Date().toISOString()
+          ...updatePayload
         }, { merge: true });
 
         updatedCount += 1;

@@ -299,19 +299,21 @@ export const parseSingleLine = (line: string, currentGroup: Group): Partial<Shif
 
   // Extraer Detalles (Especialidad, Empresa, Buque)
   // Formato: ... DE 02 A 08 H. [ESPECIALIDAD] [EMPRESA] [BUQUE] ...
-  const detailsPattern = /DE \d{2} A \d{2} H\.\s+([A-Z0-9\s]+?)\s+(CSP|MSCTV|APM|VTE|TES|TERMINAL|MEDITERRANEAN|IBERIAN)/i;
+  const detailsPattern = /DE \d{2} A \d{2} H\.\s+([A-Z0-9\s]+?)\s+(CSP(?:\s+IBERIAN\s+VALENCIA\s+TERMINAL)?|MEDITERRANEAN\s+SHIPPING\s+C\.\s*TV|MSCTV|APM(?:\s+TERMINALS\s+VALENCIA,?\s*S\.?A\.?)?|VTE|TES|TERMINAL|MEDITERRANEAN|IBERIAN)\s*(.*)$/i;
   const match = upperLine.match(detailsPattern);
 
   if (match) {
     const specialty = match[1].trim();
     const company = match[2].trim();
+    const shipRaw = (match[3] || '')
+      .replace(/\s+CONT\..*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     result.specialty = specialty;
     result.company = normalizeCompanyCode(company);
     
     // El buque suele venir despus de la empresa en el pegado de tabla
-    const remaining = upperLine.split(company)[1] || '';
-    const shipMatch = remaining.trim().split(/\t|\s{2,}/)[0];
-    if (shipMatch) result.ship = shipMatch.trim();
+    if (shipRaw) result.ship = shipRaw;
 
     result.label = `${shiftLabel} ${specialty}`;
   } else {
